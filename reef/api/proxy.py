@@ -1,0 +1,20 @@
+from fastapi import APIRouter, Request
+from typing import Dict, Any
+
+from reef.core.proxy import ProxyCore
+
+
+router = APIRouter(prefix="/proxy", tags=["proxy"])
+
+
+@router.post("/")
+async def proxy_request(url: str, request: Request):
+    data = await request.json()
+    proxy_core = ProxyCore(url=url, method="POST")
+    return await proxy_core.dispatch(data)
+
+
+@router.get("/")
+async def proxy_request(url: str):
+    proxy_core = ProxyCore(url=url, method="GET")
+    return await proxy_core.dispatch(data={})
