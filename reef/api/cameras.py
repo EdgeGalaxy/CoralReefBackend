@@ -37,7 +37,7 @@ async def create_camera(
     camera_core = await CameraCore.create_camera(
         camera_data=camera_data.model_dump(exclude_unset=True, exclude={'gateway_id'}),
         workspace=workspace,
-        gateway=get_gateway(camera_data.gateway_id) if camera_data.gateway_id else None
+        gateway=await get_gateway(camera_data.gateway_id) if camera_data.gateway_id else None
     )
     return CameraResponse.db_to_schema(camera_core.camera)
 

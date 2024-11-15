@@ -54,13 +54,13 @@ app.add_middleware(
 noauth_router = APIRouter()
 auth_router = APIRouter(dependencies=[Depends(current_user)])
 
-# 用户相关
-auth_router.include_router(users_router)
 auth_router.include_router(gateways_router)
 auth_router.include_router(workspaces_router)
 auth_router.include_router(cameras_router)
 auth_router.include_router(deployments_router)
 auth_router.include_router(workflows_router)
+# 用户相关
+noauth_router.include_router(users_router, prefix="/auth/users", tags=["users"])
 # 认证相关
 noauth_router.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]

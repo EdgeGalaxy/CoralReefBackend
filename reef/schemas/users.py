@@ -6,12 +6,12 @@ from fastapi_users import schemas
 
 class UserRead(schemas.BaseUser[PydanticObjectId]):
     username: str
-    phone: Optional[str]
+    phone: Optional[str] = ''
 
 
 class UserCreate(schemas.BaseUserCreate):
     username: str
-    phone: Optional[str]
+    phone: Optional[str] = ''
 
 
 class UserUpdate(schemas.BaseUserUpdate):

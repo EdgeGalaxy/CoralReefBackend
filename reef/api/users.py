@@ -4,7 +4,7 @@ from reef.core.users import fastapi_users
 from reef.schemas.users import UserRead, UserUpdate
 
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter()
 
 # 用户相关
 router.include_router(
