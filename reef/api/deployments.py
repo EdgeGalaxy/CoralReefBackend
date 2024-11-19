@@ -45,15 +45,13 @@ async def list_deployments(
 async def create_deployment(
     deployment_data: DeploymentCreate,
     workspace: WorkspaceModel = Depends(get_workspace),
-    gateway: GatewayModel = Depends(get_gateway),
-    workflow: WorkflowModel = Depends(get_workflow),
 ) -> DeploymentResponse:
     deployment_core = await DeploymentCore.create_deployment(
         name=deployment_data.name,
         description=deployment_data.description,
-        gateway=gateway,
-        cameras=await get_cameras(deployment_data.cameras_ids),
-        workflow=workflow,
+        gateway=await get_gateway(deployment_data.gateway_id),
+        cameras=await get_cameras(deployment_data.camera_ids),
+        workflow=await get_workflow(deployment_data.workflow_id),
         parameters=deployment_data.parameters,
         workspace=workspace
     )
@@ -64,14 +62,13 @@ async def create_deployment(
 async def update_deployment(
     deployment_data: DeploymentUpdate,
     deployment: DeploymentModel = Depends(get_deployment),
-    cameras: List[CameraModel] = Depends(get_cameras),
 ) -> CommonResponse:
     deployment_core = DeploymentCore(deployment=deployment)
     await deployment_core.update_deployment(
         update_data=deployment_data.model_dump(exclude_unset=True, exclude={'camera_ids'}),
-        cameras=cameras
+        cameras=await get_cameras(deployment_data.camera_ids) if deployment_data.camera_ids else None
     )
-    return CommonResponse(message="部署更新成功")
+    return CommonResponse(message="更新成功")
 
 
 @router.delete("/{deployment_id}", response_model=CommonResponse)
@@ -80,7 +77,7 @@ async def delete_deployment(
 ) -> CommonResponse:
     deployment_core = DeploymentCore(deployment=deployment)
     await deployment_core.delete_deployment()
-    return CommonResponse(message="部署删除成功")
+    return CommonResponse(message="删除成功")
 
 
 @router.get("/{deployment_id}/status")
@@ -97,3 +94,21 @@ async def get_deployment_results(
 ):
     deployment_core = DeploymentCore(deployment=deployment)
     return await deployment_core.get_results()
+
+
+@router.post("/{deployment_id}/pause")
+async def pause_deployment(
+    deployment: DeploymentModel = Depends(get_deployment),
+):
+    deployment_core = DeploymentCore(deployment=deployment)
+    status = await deployment_core.pause_pipeline()
+    return CommonResponse(message="暂停成功" if status else "暂停失败")
+
+
+@router.post("/{deployment_id}/resume")
+async def resume_deployment(
+    deployment: DeploymentModel = Depends(get_deployment),
+):
+    deployment_core = DeploymentCore(deployment=deployment)
+    status = await deployment_core.resume_pipeline()
+    return CommonResponse(message="恢复成功" if status else "恢复失败")

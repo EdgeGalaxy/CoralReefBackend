@@ -108,3 +108,13 @@ class DeploymentCore:
         """Get deployment results"""
         await self.check_deployment()
         return await self.deployment.get_pipeline_results()
+
+    async def pause_pipeline(self) -> bool:
+        """Pause pipeline"""
+        await self.check_deployment()
+        return await self.deployment.pause_pipeline()
+
+    async def resume_pipeline(self) -> bool:
+        """Resume pipeline"""
+        await self.check_deployment()
+        return await self.deployment.resume_pipeline()

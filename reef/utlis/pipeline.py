@@ -1,7 +1,13 @@
+from enum import Enum
 from typing import List, Dict, Any, Union
 
 from asyncer import asyncify
 from inference_sdk import InferenceHTTPClient
+
+
+class RemotePipelineStatus:
+    SUCCESS = "success"
+    FAILURE = "failure"
 
 
 class PipelineClient:
@@ -25,6 +31,18 @@ class PipelineClient:
             workspace_name=workspace_name
         )
         return response['context']['pipeline_id']
+    
+    async def pause_pipeline(self, pipeline_id: str) -> bool:
+        if pipeline_id in await self.pipeline_ids:
+            response = await asyncify(self.client.pause_inference_pipeline)(pipeline_id=pipeline_id) 
+            return response['status'] == RemotePipelineStatus.SUCCESS
+        raise False
+    
+    async def resume_pipeline(self, pipeline_id: str) -> bool:
+        if pipeline_id in await self.pipeline_ids:
+            response = await asyncify(self.client.resume_inference_pipeline)(pipeline_id=pipeline_id) 
+            return response['status'] == RemotePipelineStatus.SUCCESS
+        raise False
 
     async def terminate_pipeline(self, pipeline_id: str) -> None:
         if pipeline_id in await self.pipeline_ids:

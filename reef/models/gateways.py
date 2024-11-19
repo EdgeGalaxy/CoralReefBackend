@@ -28,4 +28,4 @@ class GatewayModel(Document):
         name = "gateways" 
 
     def get_api_url(self) -> str:
-        return f"http://localhost:8000"
+        return f"http://localhost:8001"

@@ -12,14 +12,16 @@ class DeploymentBase(BaseModel):
 
 
 class DeploymentCreate(DeploymentBase):
-    cameras_ids: List[str]
+    camera_ids: List[str]
+    gateway_id: str
+    workflow_id: str
 
 
 class DeploymentUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    camera_ids: Optional[List[str]] = None
-    parameters: Optional[Dict[str, Any]] = None
+    name: Optional[str] = ''
+    description: Optional[str] = ''
+    camera_ids: Optional[List[str]] = []
+    parameters: Optional[Dict[str, Any]] = {}
 
 
 class DeploymentResponse(DeploymentBase):
@@ -32,6 +34,7 @@ class DeploymentResponse(DeploymentBase):
     workflow_name: str
     pipeline_id: Optional[str]
     running_status: OperationStatus
+    workspace_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -53,6 +56,7 @@ class DeploymentResponse(DeploymentBase):
             workflow_name=db.workflow.name,
             pipeline_id=db.pipeline_id,
             running_status=db.running_status,
+            workspace_id=str(db.workspace.id),
             created_at=db.created_at,
             updated_at=db.updated_at
         )

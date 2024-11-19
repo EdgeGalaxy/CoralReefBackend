@@ -6,7 +6,9 @@ from pydantic import Field
 from beanie import Document, Link, before_event, Replace, Insert, Delete
 
 from loguru import logger
+
 from reef.utlis.pipeline import PipelineClient
+from reef.exceptions import RemoteCallError
 
 from .workspaces import WorkspaceModel
 from .gateways import GatewayModel
@@ -38,16 +40,22 @@ class DeploymentModel(Document):
 
     class Settings:
         name = "deployments"
-
+    
+    def __replace_spec_inputs(self, spec: Dict[str, Any]):
+        """Replace spec inputs with parameters"""
+        for input in spec['inputs']:
+            if input['type'] == 'WorkflowParameter' and input['name'] in self.parameters:
+                input['default_value'] = self.parameters[input['name']]
+        return spec
 
     @before_event([Insert])
     async def create_remote_pipeline(self):
         """Create inference pipeline before deployment is created"""
         try:
-            pipeline_client = PipelineClient(self.gateway.get_api_url())
+            pipeline_client = PipelineClient(self.gateway.get_api_url(), api_key='xxxx')
             self.pipeline_id = await pipeline_client.create_pipeline(
                 video_reference=[camera.path for camera in self.cameras],
-                workflow_spec=self.workflow.specification,
+                workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                 workspace_name=self.workspace.name
             )
             self.running_status = OperationStatus.PENDING
@@ -57,7 +65,7 @@ class DeploymentModel(Document):
             logger.info(f"Created pipeline {self.pipeline_id} for deployment")
         except Exception as e:
             logger.error(f"Failed to create pipeline: {e}")
-            raise
+            raise RemoteCallError(f"远程创建推理管道失败")
 
     @before_event([Replace])
     async def handle_pipeline_update(self, old_document: "DeploymentModel"):
@@ -78,14 +86,14 @@ class DeploymentModel(Document):
                 
                 self.pipeline_id = await pipeline_client.create_pipeline(
                     video_reference=[camera.path for camera in self.cameras],
-                    workflow_spec=self.workflow.specification,
+                    workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                     workspace_name=self.workspace.name
                 )
                 logger.info(f"Restarted pipeline for deployment: old={old_document.pipeline_id}, new={self.pipeline_id}")
 
         except Exception as e:
             logger.error(f"Failed to update pipeline: {e}")
-            raise
+            raise RemoteCallError(f"远程更新推理管道失败")
 
     @before_event([Delete])
     async def cleanup_pipeline(self):
@@ -97,7 +105,7 @@ class DeploymentModel(Document):
                 logger.info(f"Terminated pipeline {self.pipeline_id}")
         except Exception as e:
             logger.error(f"Failed to terminate pipeline: {e}")
-            raise
+            raise RemoteCallError(f"远程终止推理管道失败")
 
     @before_event([Replace, Insert])
     def update_timestamp(self):
@@ -128,7 +136,7 @@ class DeploymentModel(Document):
             return self.running_status
         except Exception as e:
             logger.error(f"Failed to update deployment status: {e}")
-            raise
+            raise RemoteCallError(f"远程更新部署状态失败")
 
     async def get_pipeline_results(self, exclude_fields: List[str] = None) -> List[Dict[str, Any]]:
         """Get pipeline results"""
@@ -141,6 +149,22 @@ class DeploymentModel(Document):
             return results
         except Exception as e:
             logger.error(f"Failed to get pipeline results: {e}")
-            raise
+            raise RemoteCallError(f"远程获取推理管道结果失败")
 
+    async def pause_pipeline(self) -> bool:
+        """Pause pipeline"""
+        pipeline_client = PipelineClient(self.gateway.get_api_url())
+        success = await pipeline_client.pause_pipeline(self.pipeline_id)
+        if success:
+            self.running_status = OperationStatus.STOPPED
+            await self.save()
+        raise RemoteCallError(f"远程暂停推理管道失败")
 
+    async def resume_pipeline(self) -> bool:
+        """Resume pipeline"""
+        pipeline_client = PipelineClient(self.gateway.get_api_url())
+        success = await pipeline_client.resume_pipeline(self.pipeline_id)
+        if success:
+            self.running_status = OperationStatus.RUNNING
+            await self.save()
+        raise RemoteCallError(f"远程恢复推理管道失败")

@@ -24,13 +24,19 @@ class InvalidStateError(ModelException):
         super().__init__(message, status_code)
 
 
-class AuthenticationError(Exception):
+class AuthenticationError(ModelException):
     """认证错误"""
     def __init__(self, message: str, status_code: int = 401):
         super().__init__(message, status_code)
 
 
-class ValidationError(Exception):
+class ValidationError(ModelException):
     """验证错误"""
     def __init__(self, message: str, status_code: int = 400):
+        super().__init__(message, status_code)
+
+
+class RemoteCallError(ModelException):
+    """远程调用错误"""
+    def __init__(self, message: str, status_code: int = 500):
         super().__init__(message, status_code)
