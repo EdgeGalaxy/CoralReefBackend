@@ -70,7 +70,7 @@ class MLModelModel(Document):
     class_mapping: Dict[str, int] = Field(description="类别和索引的映射关系")
     class_colors: Optional[Dict[str, str]] = Field(
         default=None, 
-        description="类别对应的颜色(十六进制颜���代码)"
+        description="类别对应的颜色(十六进制颜色代码)"
     )
     task_type: MLTaskType = Field(description="模型任务类型")
     version: str = Field(description="模型版本")

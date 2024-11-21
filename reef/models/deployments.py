@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import Field
 from beanie import Document, Link, before_event, Replace, Insert, Delete
 
+import requests
 from loguru import logger
 
 from reef.utlis.pipeline import PipelineClient
@@ -22,6 +23,7 @@ class OperationStatus(str, Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     STOPPED = "stopped"
+    TIMEOUT = "timeout"
 
 
 
@@ -47,12 +49,17 @@ class DeploymentModel(Document):
             if input['type'] == 'WorkflowParameter' and input['name'] in self.parameters:
                 input['default_value'] = self.parameters[input['name']]
         return spec
+    
+    async def _delayed_fetch_running_status(self):
+        """Fetch running status after 3 seconds"""
+        await asyncio.sleep(3)
+        await self.fetch_recent_running_status()
 
     @before_event([Insert])
     async def create_remote_pipeline(self):
         """Create inference pipeline before deployment is created"""
         try:
-            pipeline_client = PipelineClient(self.gateway.get_api_url(), api_key='xxxx')
+            pipeline_client = PipelineClient(self.gateway.get_api_url())
             self.pipeline_id = await pipeline_client.create_pipeline(
                 video_reference=[camera.path for camera in self.cameras],
                 workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
@@ -60,8 +67,7 @@ class DeploymentModel(Document):
             )
             self.running_status = OperationStatus.PENDING
             # fetch running status after 5 seconds
-            loop = asyncio.get_running_loop()
-            loop.call_later(5, self.fetch_recent_running_status)
+            asyncio.create_task(self._delayed_fetch_running_status())
             logger.info(f"Created pipeline {self.pipeline_id} for deployment")
         except Exception as e:
             logger.error(f"Failed to create pipeline: {e}")
@@ -133,6 +139,10 @@ class DeploymentModel(Document):
             asyncio.create_task(PipelineMetricTimeSeries.register_metrics(self, report))
             await self.save()
 
+            return self.running_status
+        except requests.exceptions.ConnectionError:
+            self.running_status = OperationStatus.TIMEOUT
+            await self.save()
             return self.running_status
         except Exception as e:
             logger.error(f"Failed to update deployment status: {e}")

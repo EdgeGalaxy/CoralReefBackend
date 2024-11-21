@@ -1,5 +1,5 @@
+import asyncio
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 
 from loguru import logger
 
@@ -46,6 +46,12 @@ class DeploymentCore:
             DeploymentModel.workspace.id == workspace.id,
             fetch_links=True
         ).sort("-created_at").to_list()
+
+    @classmethod
+    async def sync_status(cls, workspace: WorkspaceModel) -> None:
+        """Sync deployment status"""
+        deployments = await cls.get_workspace_deployments(workspace)
+        await asyncio.gather(*[deployment.fetch_recent_running_status() for deployment in deployments])
 
     @classmethod
     async def create_deployment(

@@ -1,14 +1,11 @@
+import asyncio
 from typing import List
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 from reef.core.deployments import DeploymentCore
 from reef.models import (
     WorkspaceModel, 
     DeploymentModel,
-    GatewayModel,
-    CameraModel,
-    WorkflowModel
 )
 from reef.schemas import CommonResponse
 from reef.schemas.deployments import (
@@ -38,6 +35,7 @@ async def list_deployments(
     workspace: WorkspaceModel = Depends(get_workspace),
 ) -> List[DeploymentResponse]:
     deployments = await DeploymentCore.get_workspace_deployments(workspace=workspace)
+    asyncio.create_task(DeploymentCore.sync_status(workspace))
     return [DeploymentResponse.db_to_schema(d) for d in deployments]
 
 

@@ -12,11 +12,12 @@ class RemotePipelineStatus:
 
 class PipelineClient:
     def __init__(self, api_url: str, api_key: str = None):
-        self.client = InferenceHTTPClient(api_url=api_url, api_key=api_key)
+        self.client = InferenceHTTPClient(api_url=api_url, api_key='jDmVpLRLlwVHOafDapSi')
 
     @property
     async def pipeline_ids(self) -> List[str]:
         response = await asyncify(self.client.list_inference_pipelines)()
+        print('response', response)
         return [p for p in response['pipelines']]
 
     async def create_pipeline(
@@ -50,7 +51,7 @@ class PipelineClient:
 
     async def get_pipeline_metrics(self, pipeline_id: str) -> str:
         if pipeline_id not in await self.pipeline_ids:
-            return {"status": "stopped", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
+            return {"status": "timeout", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
         
         response = await asyncify(self.client.get_inference_pipeline_status)(pipeline_id=pipeline_id)
         return response
