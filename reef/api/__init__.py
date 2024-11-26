@@ -17,6 +17,8 @@ from reef.api.cameras import router as cameras_router
 from reef.api.deployments import router as deployments_router
 from reef.api.workflows import router as workflows_router
 from reef.api.proxy import router as proxy_router
+from reef.api.roboflow import router as roboflow_router
+from reef.api.ml_models import router as ml_models_router
 
 from reef.core.users import current_user
 from reef.core.users import fastapi_users, auth_backend
@@ -59,6 +61,7 @@ auth_router.include_router(workspaces_router)
 auth_router.include_router(cameras_router)
 auth_router.include_router(deployments_router)
 auth_router.include_router(workflows_router)
+auth_router.include_router(ml_models_router)
 # 用户相关
 noauth_router.include_router(users_router, prefix="/auth/users", tags=["users"])
 # 认证相关
@@ -72,6 +75,8 @@ noauth_router.include_router(
 )
 # 代理相关
 noauth_router.include_router(proxy_router, tags=["proxy"])
+# Roboflow相关
+noauth_router.include_router(roboflow_router, tags=["roboflow"])
 app.include_router(noauth_router)
 app.include_router(auth_router, prefix="/api/reef")
 

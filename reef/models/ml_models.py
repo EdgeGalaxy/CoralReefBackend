@@ -10,10 +10,26 @@ class MLPlatform(str, Enum):
     CUSTOM = "custom"
 
 class MLTaskType(str, Enum):
-    OBJECT_DETECTION = "object_detection"
+    OBJECT_DETECTION = "object-detection"
     CLASSIFICATION = "classification"
     SEGMENTATION = "segmentation"
     KEYPOINT = "keypoint"
+
+
+class DatasetType(str, Enum):
+    COCO = "coco"
+    YOLO = "yolo"
+
+
+class MLModelType(str, Enum):
+    YOLOV5 = "yolov5"
+    YOLOV8 = "yolov8n"
+
+    YOLOV7 = "yolov7"
+    YOLOV6 = "yolov6"
+    YOLOV4 = "yolov4"
+    YOLOV3 = "yolov3"
+
 
 class ResizeConfig(BaseModel):
     format: str = Field(default="Fit (black edges) in", description="调整大小的格式")
@@ -50,33 +66,36 @@ class PreprocessingConfig(BaseModel):
         "extra": "allow"
     }
 
+class Environment(BaseModel):
+    PREPROCESSING: str = Field(description="预处理配置参数")
+    CLASS_MAP: Dict[str, str] = Field(description="类别和索引的映射关系")
+    COLORS: Optional[Dict[str, str]] = Field(
+        default=None, 
+        description="类别对应的颜色(十六进制颜色代码)"
+    )
+    BATCH_SIZE: int = Field(default=8, description="批处理大小")
+    
+    model_config = {
+        "extra": "allow"
+    }
+
 class MLModelModel(Document):
     name: str = Field(description="模型名称")
     description: Optional[str] = Field(default=None, description="模型描述")
     platform: MLPlatform = Field(description="模型来源平台")
     dataset_url: Optional[str] = Field(default=None, description="数据集地址")
-    preprocessing_config: Dict[str, Any] = Field(
-        default_factory=lambda: {
-            "auto-orient": {"enabled": True},
-            "resize": {
-                "format": "Fit (black edges) in",
-                "width": 640,
-                "height": 640,
-                "enabled": True
-            }
-        },
-        description="预处理配置参数"
-    )
-    class_mapping: Dict[str, int] = Field(description="类别和索引的映射关系")
-    class_colors: Optional[Dict[str, str]] = Field(
-        default=None, 
-        description="类别对应的颜色(十六进制颜色代码)"
-    )
+    dataset_type: Optional[DatasetType] = Field(default=None, description="数据集类型")
     task_type: MLTaskType = Field(description="模型任务类型")
+    model_type: str = Field(description="模型类型")
+    onnx_model_url: str = Field(description="ONNX模型地址")
+    environment: Environment = Field(description="环境配置参数")
+    environment_url: str = Field(description="环境配置地址")
+    rknn_model_url: Optional[str] = Field(default=None, description="RKNN模型地址")
     version: str = Field(description="模型版本")
+    is_public: bool = Field(default=False, description="是否公开")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
-    workspace: Link[WorkspaceModel] = Field(description="所属工作空间")
+    workspace: Optional[Link[WorkspaceModel]] = Field(default=None, description="所属工作空间")
 
     class Settings:
         name = "ml_models"
@@ -85,3 +104,14 @@ class MLModelModel(Document):
             "platform",
             "task_type"
         ]
+
+    @classmethod
+    async def pick_new_dataset_version(cls, dataset_type: DatasetType) -> str:
+        dataset_models = await cls.find(cls.dataset_type == dataset_type).sort("-created_at").to_list()
+        if dataset_models:
+            custom_dataset_type, index = dataset_models[0].version.split('/')
+            index = int(index) + 1
+        else:
+            custom_dataset_type = dataset_type
+            index = 1
+        return f"{custom_dataset_type}/{index}"

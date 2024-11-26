@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from reef.models import UserModel
 from reef.core.users import current_user
 
-from reef.models import WorkspaceUserModel, GatewayModel, WorkspaceModel, DeploymentModel, CameraModel, WorkflowModel, GatewayStatus
+from reef.models import WorkspaceUserModel, GatewayModel, WorkspaceModel, DeploymentModel, CameraModel, WorkflowModel, GatewayStatus, MLModelModel
 
 
 async def check_user_has_workspace_permission(workspace_id: str, user: UserModel = Depends(current_user)):
@@ -69,3 +69,11 @@ async def get_cameras(camera_ids: List[str]) -> List[CameraModel]:
         raise HTTPException(status_code=404, detail="摄像头不存在")
     
     return cameras  
+
+
+async def get_ml_model(model_id: str) -> MLModelModel:
+    model = await MLModelModel.get(model_id, fetch_links=True)
+    if not model:
+        raise HTTPException(status_code=404, detail="模型不存在")
+    
+    return model

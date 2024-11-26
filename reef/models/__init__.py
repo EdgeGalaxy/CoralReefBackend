@@ -9,6 +9,7 @@ from .ml_models import (
     MLModelModel, 
     MLPlatform, 
     MLTaskType,
+    Environment,
     PreprocessingConfig,
     ResizeConfig,
     AutoOrientConfig

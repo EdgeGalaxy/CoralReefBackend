@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Union
 
 from asyncer import asyncify
 from inference_sdk import InferenceHTTPClient
+from reef.config import settings
 
 
 class RemotePipelineStatus:
@@ -12,7 +13,9 @@ class RemotePipelineStatus:
 
 class PipelineClient:
     def __init__(self, api_url: str, api_key: str = None):
-        self.client = InferenceHTTPClient(api_url=api_url, api_key='jDmVpLRLlwVHOafDapSi')
+        if api_key is None:
+            api_key = settings.roboflow_api_key
+        self.client = InferenceHTTPClient(api_url=api_url, api_key=api_key)
 
     @property
     async def pipeline_ids(self) -> List[str]:
