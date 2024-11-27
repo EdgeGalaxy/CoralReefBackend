@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends
+from loguru import logger
 
 from reef.core.ml_models import MLModelCore
 from reef.models import WorkspaceModel, MLModelModel
@@ -9,18 +10,19 @@ from reef.schemas.ml_models import (
     MLModelResponse,
     MLModelUpdate,
 )
+from reef.core.users import super_user
 from reef.api._depends import check_user_has_workspace_permission, get_workspace, get_ml_model
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/models",
     tags=["ML Models"],
-    dependencies=[Depends(check_user_has_workspace_permission)]
+    dependencies=[Depends(check_user_has_workspace_permission), Depends(super_user)]
 )
 
 
-@router.get("/", response_model=List[MLModelResponse])
+@router.get("/")
 async def list_models(
-    is_public: bool = False,
+    is_public: bool = True,
     workspace: WorkspaceModel = Depends(get_workspace)
 ) -> List[MLModelResponse]:
     """List all ML models in a workspace."""
@@ -55,6 +57,12 @@ async def register_roboflow_model(
         workspace=workspace
     )
     return await MLModelResponse.db_to_schema(model_core.model)
+
+
+@router.get("/roboflow/models", response_model=List[str])
+async def list_roboflow_models() -> List[str]:
+    """List all Roboflow models."""
+    return await MLModelCore.get_roboflow_model_ids()
 
 
 @router.put("/{model_id}", response_model=CommonResponse)

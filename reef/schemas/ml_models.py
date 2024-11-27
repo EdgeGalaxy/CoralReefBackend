@@ -1,7 +1,9 @@
 import json
 from typing import Optional, Dict, Any
 from datetime import datetime
+from loguru import logger
 from pydantic import BaseModel, Field, model_validator
+
 
 from reef.models.ml_models import (
     MLPlatform,
@@ -10,7 +12,8 @@ from reef.models.ml_models import (
     PreprocessingConfig,
     MLModelModel
 )
-from reef.utlis._utils import class_colors_to_hex, sign_url
+from reef.utlis._utils import class_colors_to_hex
+from reef.utlis.cloud import sign_url
 
 
 
@@ -47,10 +50,11 @@ class MLModelBase(BaseModel):
     version: str = Field(description="模型版本")
     is_public: bool = Field(default=False, description="是否公开")
 
-    @model_validator(mode='after')
-    def generate_class_colors(self) -> 'MLModelBase':
-        if not self.class_colors and self.class_mapping:
-            self.class_colors = class_colors_to_hex(self.class_mapping)
+    @model_validator(mode='before')
+    def generate_class_colors(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if not values.get('class_colors') and values.get('class_mapping'):
+            values['class_colors'] = class_colors_to_hex(values['class_mapping'])
+        return values
 
 
 class MLModelCreate(MLModelBase):
@@ -75,7 +79,11 @@ class MLModelResponse(MLModelBase):
         from_attributes = True
 
     @classmethod
-    async def db_to_schema(cls, db: MLModelModel) -> "MLModelResponse":
+    async def db_to_schema(cls, db: MLModelModel) -> Optional["MLModelResponse"]:
+        """Factory method to create response from database model."""
+        onnx_model_url = await sign_url(db.onnx_model_url) if db.onnx_model_url else ''
+        rknn_model_url = await sign_url(db.rknn_model_url) if db.rknn_model_url else ''
+        
         return cls(
             id=str(db.id),
             name=db.name,
@@ -88,8 +96,8 @@ class MLModelResponse(MLModelBase):
             class_colors=db.environment.COLORS,
             task_type=db.task_type,
             model_type=db.model_type,
-            onnx_model_url=await sign_url(db.onnx_model_url),
-            rknn_model_url=await sign_url(db.rknn_model_url) if db.rknn_model_url else '',
+            onnx_model_url=onnx_model_url,
+            rknn_model_url=rknn_model_url,
             version=db.version,
             is_public=db.is_public,
             workspace_id=str(db.workspace.id) if db.workspace else '',
@@ -97,4 +105,4 @@ class MLModelResponse(MLModelBase):
             created_at=db.created_at,
             updated_at=db.updated_at
         )
-    
+ 

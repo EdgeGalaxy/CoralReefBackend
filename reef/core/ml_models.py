@@ -16,7 +16,8 @@ from reef.models import (
 )
 from reef.schemas.ml_models import MLModelCreate 
 from reef.exceptions import ValidationError
-from reef.utlis._utils import get_roboflow_model_data, upload_data_to_cloud
+from reef.utlis.roboflow import get_roboflow_model_data, get_roboflow_model_ids
+from reef.utlis.cloud import upload_data_to_cloud
 
 
 class MLModelCore:
@@ -123,6 +124,10 @@ class MLModelCore:
         await model.insert()
         logger.info(f'Created ML model: {model.id}')
         return cls(model=model)
+    
+    @classmethod
+    async def get_roboflow_model_ids(cls) -> List[str]:
+        return await get_roboflow_model_ids()
 
     async def update_model(self, model_data: dict) -> None:
         """Update an existing ML model."""
