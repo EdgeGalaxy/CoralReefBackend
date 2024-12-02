@@ -13,11 +13,12 @@ from reef.models import (
     Environment,
     MLPlatform,
     MLTaskType,
+    DatasetType
 )
 from reef.schemas.ml_models import MLModelCreate 
 from reef.exceptions import ValidationError
-from reef.utlis.roboflow import get_roboflow_model_data, get_roboflow_model_ids
-from reef.utlis.cloud import upload_data_to_cloud
+from reef.utlis.roboflow import get_roboflow_model_data, get_roboflow_model_ids, get_models_type
+from reef.utlis.cloud import upload_data_to_cloud, transfer_object
 
 
 class MLModelCore:
@@ -43,15 +44,11 @@ class MLModelCore:
         ).sort("-created_at").to_list()
     
     @classmethod
-    async def get_model_by_alias(cls, model_alias: str) -> 'MLModelCore':
+    async def get_model_by_id(cls, model_id: str) -> 'MLModelCore':
         model = await MLModelModel.find_one(
-            MLModelModel.version == model_alias
+            MLModelModel.name == model_id
         )
         if not model:
-            REVERSE_REGISTERED_ALIASES = dict(map(reversed, REGISTERED_ALIASES.items()))
-            model_id = REVERSE_REGISTERED_ALIASES.get(model_alias)
-            if not model_id:
-                raise ValidationError(f"Invalid model alias: {model_alias}")
             return await cls.register_roboflow_model(model_id)
         return cls(model=model)
 
@@ -63,27 +60,32 @@ class MLModelCore:
     ) -> 'MLModelCore':
         """Create a new ML model."""
         environment = Environment(
-            PREPROCESSING=json.dumps(data.preprocessing_config),
+            PREPROCESSING=json.dumps(data.preprocessing_config.model_dump()),
             CLASS_MAP=data.class_mapping,
             COLORS=data.class_colors,
             BATCH_SIZE=data.batch_size
         )
         model_alias = await MLModelModel.pick_new_dataset_version(data.dataset_type)
+        onnx_model_key = f"{model_alias}/weights.onnx"
+        rknn_model_key = f"{model_alias}/weights.rknn"
+        await transfer_object(data.onnx_model_url, onnx_model_key)
+        if data.rknn_model_url:
+            await transfer_object(data.rknn_model_url, rknn_model_key)
             
         environment_key = await upload_data_to_cloud(
             data=environment.model_dump_json(), 
             key=f"{model_alias}/environment.json"
         )
         model = MLModelModel(
-            name=data.name,
+            name=f"custom-{data.name}-{model_alias.split('/')[-1]}",
             description=data.description,
             platform=data.platform,
             dataset_url=data.dataset_url,
             dataset_type=data.dataset_type,
             task_type=data.task_type,
             model_type=data.model_type,
-            onnx_model_url=data.onnx_model_url,
-            rknn_model_url=data.rknn_model_url,
+            onnx_model_url=onnx_model_key,
+            rknn_model_url=rknn_model_key,
             environment=environment,
             environment_url=environment_key,
             version=model_alias,
@@ -103,11 +105,13 @@ class MLModelCore:
     ) -> 'MLModelCore':
         api_data = await get_roboflow_model_data(model_id)
         model_alias = resolve_roboflow_model_alias(model_id)
+        dataset_type = DatasetType(model_alias.split("/")[0])
 
         model = MLModelModel(
             name=model_id,
             description=f"dataset version {model_alias} for {api_data['type']}",
             platform=MLPlatform.ROBOFLOW,
+            dataset_type=dataset_type,
             task_type=MLTaskType(api_data["type"]),
             model_type=api_data["modelType"],
             onnx_model_url=api_data["model"],
@@ -128,6 +132,10 @@ class MLModelCore:
     @classmethod
     async def get_roboflow_model_ids(cls) -> List[str]:
         return await get_roboflow_model_ids()
+    
+    @classmethod
+    async def get_models_type(cls) -> List[str]:
+        return await get_models_type()
 
     async def update_model(self, model_data: dict) -> None:
         """Update an existing ML model."""
@@ -144,3 +152,7 @@ class MLModelCore:
         
         await self.model.delete()
         logger.info(f'Deleted ML model: {self.model.id}')
+    
+    async def convert_onnx_to_rknn(self) -> None:
+        """Convert ONNX model to RKNN model."""
+        pass

@@ -18,7 +18,8 @@ def get_bucket():
 
 async def sign_url(key: str, expires: int = 3600) -> str:
     # Try to get from cache first
-    cached_url = url_cache.get(key, expires)
+    cache_expires = expires - 60
+    cached_url = url_cache.get(key, cache_expires)
     if cached_url:
         return cached_url
     # Generate new signed URL if not in cache
@@ -26,12 +27,12 @@ async def sign_url(key: str, expires: int = 3600) -> str:
     signed_url = await asyncify(bucket.sign_url)('GET', key, expires=expires)
     
     # Cache the result
-    url_cache.set(key, expires, signed_url)
+    url_cache.set(key, cache_expires, signed_url)
     
     return signed_url
 
 
-async def backup_roboflow_url(key: str, url: str) -> str:
+async def backup_remote_url(key: str, url: str) -> str:
     response = await asyncify(requests.get)(url)
     if response.status_code != 200:
         raise RemoteCallError(f"Roboflow API返回错误: {response.status_code} {response.text}")
@@ -45,3 +46,15 @@ async def upload_data_to_cloud(data: Union[str, bytes], key: str) -> str:
     await asyncify(bucket.put_object)(key=key, data=data)
     return key
 
+
+async def transfer_object(source_key: str, target_key: str) -> None:
+    bucket = get_bucket()
+    if bucket.object_exists(source_key):
+        result = await asyncify(bucket.copy_object)(source_bucket_name=settings.oss_bucket_name, source_key=source_key, target_key=target_key)
+        if result.status != 200:
+            raise RemoteCallError(f"上传对象失败: {result.status} {result.request_id}")
+        await asyncify(bucket.delete_object)(source_key)
+    elif source_key.startswith("http"):
+        await backup_remote_url(target_key, source_key)
+    else:
+        raise RemoteCallError(f"源对象不存在: {source_key}")

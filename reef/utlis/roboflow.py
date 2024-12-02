@@ -9,7 +9,7 @@ from inference_sdk.http.utils.aliases import resolve_roboflow_model_alias, REGIS
 from reef.config import settings
 from reef.exceptions import RemoteCallError
 from reef.utlis._utils import _add_params_to_url
-from reef.utlis.cloud import backup_roboflow_url
+from reef.utlis.cloud import backup_remote_url
 
 
 async def get_roboflow_model_data(model_id: str, endpoint_type: str = None, device_id: str = None, api_key: str = None) -> dict:
@@ -44,11 +44,15 @@ async def get_roboflow_model_data(model_id: str, endpoint_type: str = None, devi
     except Exception as e:
         raise RemoteCallError(f"Roboflow API返回错误: {e}")
     else:
-        api_data["environment_key"] = await backup_roboflow_url(key=f"{model_alias}/environment.json", url=api_data["environment"])
+        api_data["environment_key"] = await backup_remote_url(key=f"{model_alias}/environment.json", url=api_data["environment"])
         api_data["environment"] = environment.json()
-        api_data["model"] = await backup_roboflow_url(key=f"{model_alias}/weights.onnx", url=api_data["model"])
+        api_data["model"] = await backup_remote_url(key=f"{model_alias}/weights.onnx", url=api_data["model"])
     return api_data
 
 
 async def get_roboflow_model_ids() -> List[str]:
     return list(REGISTERED_ALIASES.keys())
+
+
+async def get_models_type() -> List[str]:
+    return sorted(list(set([model_id.split("-")[0] for model_id in list(REGISTERED_ALIASES.keys())])))

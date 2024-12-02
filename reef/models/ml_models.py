@@ -80,11 +80,11 @@ class Environment(BaseModel):
     }
 
 class MLModelModel(Document):
-    name: str = Field(description="模型名称")
+    name: str = Field(description="模型名称", unique=True)
     description: Optional[str] = Field(default=None, description="模型描述")
     platform: MLPlatform = Field(description="模型来源平台")
     dataset_url: Optional[str] = Field(default=None, description="数据集地址")
-    dataset_type: Optional[DatasetType] = Field(default=None, description="数据集类型")
+    dataset_type: DatasetType = Field(description="数据集类型")
     task_type: MLTaskType = Field(description="模型任务类型")
     model_type: str = Field(description="模型类型")
     onnx_model_url: str = Field(description="ONNX模型地址")

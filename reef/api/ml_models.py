@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from reef.core.ml_models import MLModelCore
@@ -13,6 +14,7 @@ from reef.schemas.ml_models import (
 from reef.core.users import super_user
 from reef.api._depends import check_user_has_workspace_permission, get_workspace, get_ml_model
 
+
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/models",
     tags=["ML Models"],
@@ -22,7 +24,7 @@ router = APIRouter(
 
 @router.get("/")
 async def list_models(
-    is_public: bool = True,
+    is_public: bool = False,
     workspace: WorkspaceModel = Depends(get_workspace)
 ) -> List[MLModelResponse]:
     """List all ML models in a workspace."""
@@ -40,7 +42,7 @@ async def create_custom_model(
 ) -> MLModelResponse:
     """Register a custom ML model."""
     model_core = await MLModelCore.register_custom_model(
-        data=model_data.model_dump(exclude_none=True),
+        data=model_data,
         workspace=workspace
     )
     return await MLModelResponse.db_to_schema(model_core.model)
@@ -65,6 +67,20 @@ async def list_roboflow_models() -> List[str]:
     return await MLModelCore.get_roboflow_model_ids()
 
 
+@router.get("/type", response_model=List[str])
+async def list_models_type() -> List[str]:
+    """List all ML model types."""
+    return await MLModelCore.get_models_type()
+
+
+@router.get("/{model_id}", response_model=MLModelResponse)
+async def get_model(
+    model: MLModelModel = Depends(get_ml_model),
+) -> MLModelResponse:
+    """Get an ML model."""
+    return await MLModelResponse.db_to_schema(model)
+
+
 @router.put("/{model_id}", response_model=CommonResponse)
 async def update_model(
     model_data: MLModelUpdate,
@@ -84,3 +100,13 @@ async def delete_model(
     model_core = MLModelCore(model=model)
     await model_core.delete_model()
     return CommonResponse(message="模型删除成功")
+
+
+@router.post("/{model_id}/convert", response_model=CommonResponse)
+async def convert_onnx_to_rknn(
+    model: MLModelModel = Depends(get_ml_model),
+) -> CommonResponse:
+    """Convert ONNX model to RKNN model."""
+    model_core = MLModelCore(model=model)
+    await model_core.convert_onnx_to_rknn()
+    return CommonResponse(message="模型转换成功")
