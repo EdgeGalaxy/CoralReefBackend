@@ -26,6 +26,13 @@ async def list_workflows(
     return [WorkflowResponse.db_to_schema(w) for w in workflows]
 
 
+@router.get("/{workflow_id}", response_model=WorkflowResponse)
+async def get_workflow_detail(
+    workflow: WorkflowModel = Depends(get_workflow)
+) -> WorkflowResponse:
+    return WorkflowResponse.db_to_schema(workflow)
+
+
 @router.post("/", response_model=WorkflowResponse)
 async def create_workflow(
     workflow_data: WorkflowCreate,

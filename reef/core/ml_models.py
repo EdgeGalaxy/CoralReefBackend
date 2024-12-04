@@ -32,7 +32,10 @@ class MLModelCore:
     async def get_workspace_models(cls, workspace: WorkspaceModel) -> List[MLModelModel]:
         """Get all ML models for this workspace."""
         return await MLModelModel.find(
-            MLModelModel.workspace.id == workspace.id,
+            Or(
+                MLModelModel.workspace.id == workspace.id,
+                MLModelModel.is_public == True
+            ),
             fetch_links=True
         ).sort("-created_at").to_list()
     
