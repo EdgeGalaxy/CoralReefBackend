@@ -1,7 +1,6 @@
 from enum import Enum
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from av import OptionNotFoundError
 from pydantic import BaseModel, Field
 
 from pydantic import model_validator

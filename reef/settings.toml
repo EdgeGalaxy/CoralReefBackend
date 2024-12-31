@@ -1,6 +1,21 @@
 [default]
+mongo_uri = "@format {env[MONGO_URI]}"
+roboflow_api_key = "@format {env[ROBOFLOW_API_KEY]}"
+roboflow_api_url = "@format {env[ROBOFLOW_API_URL]}"
 
+oss_access_key_id = "@format {env[OSS_ACCESS_KEY_ID]}"
+oss_access_key_secret = "@format {env[OSS_ACCESS_KEY_SECRET]}"
+oss_bucket_name = "@format {env[OSS_BUCKET_NAME]}"
+oss_endpoint = "@format {env[OSS_ENDPOINT]}"
 
+[default.dynaconf_merge]
+secrets = true  # 启用 .secrets.toml 合并
+
+[development]
+# 开发环境将自动合并 .secrets.toml 中的配置
+
+[production]
+# 生产环境将从环境变量读取所有配置
 
 
 
