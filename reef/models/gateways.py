@@ -1,8 +1,10 @@
+import os
 from datetime import datetime
 from enum import Enum
 from pydantic import Field
 from beanie import Document, Link
 
+from reef.config import settings
 from .workspaces import WorkspaceModel
 
 
@@ -28,4 +30,7 @@ class GatewayModel(Document):
         name = "gateways" 
 
     def get_api_url(self) -> str:
-        return f"http://localhost:8001"
+        if os.environ.get("DYNACONF_ENV", "development").lower() != "production":
+            return f"http://localhost:9001"
+        else:
+            return f"{settings.get('remote_schema', 'http')}://{self.mac_address}.{settings.remote_domain}"
