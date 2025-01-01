@@ -28,5 +28,4 @@ RUN poetry config virtualenvs.create false && \
 # 复制项目文件
 COPY . .
 
-# 设置默认命令
-CMD ["cd", "reef", "&&", "python3", "run.py"]
+CMD cd reef && python3 run.py
