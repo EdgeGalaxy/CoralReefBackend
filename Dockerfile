@@ -8,6 +8,7 @@ WORKDIR /workspace
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
+    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装Poetry
