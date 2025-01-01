@@ -26,7 +26,7 @@ RUN poetry config virtualenvs.create false && \
     rm pyproject.toml poetry.lock
 
 # 复制项目文件
-COPY reef .
+COPY . .
 
 # 设置默认命令
-CMD ["python3", "run.py"]
+CMD ["cd", "reef", "&&", "python3", "run.py"]
