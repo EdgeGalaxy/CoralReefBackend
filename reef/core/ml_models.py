@@ -5,7 +5,7 @@ from datetime import datetime
 from loguru import logger
 
 from beanie.odm.operators.find.logical import Or
-from inference_sdk.http.utils.aliases import resolve_roboflow_model_alias, REGISTERED_ALIASES
+from inference_sdk.http.utils.aliases import resolve_roboflow_model_alias
 
 from reef.models import (
     MLModelModel,

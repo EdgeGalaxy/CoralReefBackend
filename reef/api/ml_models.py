@@ -11,14 +11,13 @@ from reef.schemas.ml_models import (
     MLModelResponse,
     MLModelUpdate,
 )
-from reef.core.users import super_user
 from reef.api._depends import check_user_has_workspace_permission, get_workspace, get_ml_model
 
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/models",
     tags=["ML Models"],
-    dependencies=[Depends(check_user_has_workspace_permission), Depends(super_user)]
+    dependencies=[Depends(check_user_has_workspace_permission)]
 )
 
 
