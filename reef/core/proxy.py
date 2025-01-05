@@ -8,7 +8,9 @@ from beanie.odm.fields import PydanticObjectId
 
 from reef.models import GatewayModel, GatewayStatus
 from reef.core.gateways import GatewayCore
+from reef.models.workspaces import WorkspaceModel
 from reef.schemas.proxy import PingpackData
+from reef.schemas.gateways import GatewayCreate
 
 
 class ProxyCore:
@@ -33,10 +35,53 @@ class ProxyCore:
         logger.debug(f"解析请求 [pingpack] ->: {data}")
 
         pingpack_data = PingpackData(**data)
+        # 前置校验
+        if not pingpack_data.device_id:
+            logger.error(f"device_id 为空: {data}")
+            raise ValueError("pingpack device_id 为空, 无法创建网关")
+        
+        # inference_server_id 不为空，且 包含 - 符号，第一个为workspace_id, 第二个为random_id
+        if not pingpack_data.inference_server_id:
+            logger.error(f"inference_server_id 为空: {data}")
+            raise ValueError("pingpack inference_server_id 为空, 无法创建网关")
+
+        if '-' not in pingpack_data.inference_server_id:
+            logger.error(f"inference_server_id 格式错误: {data}")
+            raise ValueError("pingpack inference_server_id 格式错误, 需要包含 - 符号, 无法创建网关")
+        
+        workspace_id, _ = pingpack_data.inference_server_id.split('-')
+        
         gateway = await GatewayModel.find_one(
             GatewayModel.id == PydanticObjectId(pingpack_data.device_id),
             fetch_links=True
         )
+        if not gateway:
+            logger.info(f"网关 {pingpack_data.device_id} 不存在, 新建")
+            workspace = await WorkspaceModel.find_one(
+                WorkspaceModel.id == PydanticObjectId(workspace_id),
+                fetch_links=True
+            )
+
+            if not workspace:
+                logger.error(f"工作空间 {workspace_id} 不存在, 无法创建网关")
+                raise ValueError(f"工作空间 {workspace_id} 不存在, 无法创建网关")
+            mac_address = pingpack_data.mac_address.replace(':', '')
+            
+            gateway_data = GatewayCreate(
+                id=pingpack_data.device_id,
+                name=mac_address,
+                mac_address=mac_address,
+                ip_address=pingpack_data.ip_address,
+                version=pingpack_data.inference_server_version,
+                platform=pingpack_data.platform,
+                description=f"新建网关 {workspace.name}",
+            )
+            gateway = await GatewayCore.create_gateway(
+                gateway_data=gateway_data.model_dump(exclude_none=True),
+                workspace=workspace
+            )
+            logger.info(f"新建网关 {gateway.id} 成功")
+
         if gateway.status == GatewayStatus.DELETED:
             gateway.status = GatewayStatus.ONLINE
             await gateway.save()
