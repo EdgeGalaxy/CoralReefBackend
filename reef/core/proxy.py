@@ -46,7 +46,7 @@ class ProxyCore:
         gateway_data = {
             "status": GatewayStatus.ONLINE,
             "ip_address": pingpack_data.ip_address,
-            "mac_address": pingpack_data.mac_address,
+            "mac_address": pingpack_data.mac_address.replace(':', ''),
             "version": pingpack_data.inference_server_version,
         }
         await gateway_core.update_gateway(gateway_data=gateway_data)

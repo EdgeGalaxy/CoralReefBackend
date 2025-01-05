@@ -1,6 +1,7 @@
+import re
 from datetime import datetime
 from typing import Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from reef.models.gateways import GatewayStatus, GatewayModel
 
@@ -13,6 +14,14 @@ class GatewayBase(BaseModel):
     platform: str = Field(description="网关平台")
     ip_address: Optional[str] = Field(default='', description="网关IP地址")
     mac_address: Optional[str] = Field(default='', description="网关MAC地址")
+
+    @field_validator('mac_address')
+    def validate_mac_address(cls, v):
+        # 去掉冒号
+        v = v.replace(':', '')
+        if v and not re.match(r'^[0-9a-fA-F]{12}$', v):
+            raise ValueError('Invalid MAC address')
+        return v
 
 
 class GatewayCreate(GatewayBase):
