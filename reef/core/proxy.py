@@ -80,7 +80,7 @@ class ProxyCore:
                 gateway_data=gateway_data.model_dump(exclude_none=True),
                 workspace=workspace
             )
-            logger.info(f"新建网关 {gateway.id} 成功")
+            logger.info(f"新建网关 {gateway.gateway.id} 成功")
 
         if gateway.status == GatewayStatus.DELETED:
             gateway.status = GatewayStatus.ONLINE
