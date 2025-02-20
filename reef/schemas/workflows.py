@@ -8,8 +8,8 @@ from reef.models.workflows import WorkflowModel
 from reef.exceptions import ValidationError
 
 class InputParamsType(str, Enum):
-    workflow_image = "workflowImage"
-    workflow_parameter = "workflowParameter"
+    workflow_image = "WorkflowImage"
+    workflow_parameter = "WorkflowParameter"
 
 class WorkflowSpecification(BaseModel):
     version: str = Field(description="工作流版本")
