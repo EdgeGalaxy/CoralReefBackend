@@ -95,6 +95,9 @@ class WorkflowCreate(WorkflowBase):
 class WorkflowUpdate(WorkflowBase):
     pass
 
+class WorkflowRename(BaseModel):
+    name: str
+    description: Optional[str] = Field(default=None, description="工作流描述")
 
 class WorkflowResponse(WorkflowBase):
     id: str

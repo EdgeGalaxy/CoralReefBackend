@@ -7,7 +7,8 @@ from reef.schemas import CommonResponse
 from reef.schemas.workflows import (
     WorkflowCreate,
     WorkflowResponse,
-    WorkflowUpdate
+    WorkflowUpdate,
+    WorkflowRename
 )
 from reef.api._depends import check_user_has_workspace_permission, get_workflow, get_workspace
 
@@ -48,6 +49,16 @@ async def create_workflow(
 @router.put("/{workflow_id}", response_model=WorkflowResponse)
 async def update_workflow(
     workflow_data: WorkflowUpdate,
+    workflow: WorkflowModel = Depends(get_workflow),
+) -> WorkflowResponse:
+    workflow_core = WorkflowCore(workflow=workflow)
+    await workflow_core.update_workflow(workflow_data=workflow_data.model_dump(exclude_none=True))
+    return WorkflowResponse.db_to_schema(workflow_core.workflow)
+
+
+@router.put("/{workflow_id}/rename", response_model=WorkflowResponse)
+async def rename_workflow(
+    workflow_data: WorkflowRename,
     workflow: WorkflowModel = Depends(get_workflow),
 ) -> WorkflowResponse:
     workflow_core = WorkflowCore(workflow=workflow)
