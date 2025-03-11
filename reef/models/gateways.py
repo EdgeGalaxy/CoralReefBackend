@@ -24,6 +24,7 @@ class GatewayModel(Document):
     status: GatewayStatus = Field(default=GatewayStatus.OFFLINE, description="网关状态")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    last_heartbeat: datetime = Field(default_factory=datetime.now, description="最后心跳时间")
     workspace: Link[WorkspaceModel] = Field(description="所属工作空间")
 
     class Settings:

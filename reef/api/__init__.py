@@ -24,6 +24,8 @@ from reef.core.users import current_user
 from reef.core.users import fastapi_users, auth_backend
 from reef.schemas.users import UserRead, UserCreate
 
+from reef.utlis.monitor import start_gateway_monitor
+
 from reef.config import settings
 from reef.exceptions import ModelException
 
@@ -32,6 +34,7 @@ from reef.exceptions import ModelException
 async def lifespan(app: FastAPI):
     client = AsyncIOMotorClient(settings.mongo_uri)
     await init_beanie(database=client.get_default_database(), document_models=INIT_MODELS)
+    await start_gateway_monitor()
     yield
 
 

@@ -76,8 +76,11 @@ class ProxyCore:
                 platform=pingpack_data.platform,
                 description=f"新建网关 {workspace.name}",
             )
+            data = gateway_data.model_dump(exclude_none=True)
+            # set status to online
+            data['status'] = GatewayStatus.ONLINE
             gateway = await GatewayCore.create_gateway(
-                gateway_data=gateway_data.model_dump(exclude_none=True),
+                gateway_data=data,
                 workspace=workspace
             )
             logger.info(f"新建网关 {gateway.gateway.id} 成功")
