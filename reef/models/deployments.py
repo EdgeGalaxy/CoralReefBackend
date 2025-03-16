@@ -9,13 +9,13 @@ import requests
 from loguru import logger
 
 from reef.utlis.pipeline import PipelineClient
+from reef.utlis.cloud import sign_url
 from reef.exceptions import RemoteCallError
 
 from .workspaces import WorkspaceModel
 from .gateways import GatewayModel
-from .cameras import CameraModel
+from .cameras import CameraModel, CameraType
 from .workflows import WorkflowModel
-
 
 class OperationStatus(str, Enum):
     PENDING = "pending"
@@ -54,6 +54,21 @@ class DeploymentModel(Document):
         """Fetch running status after 3 seconds"""
         await asyncio.sleep(3)
         await self.fetch_recent_running_status()
+    
+    async def _video_file_to_signed_url(self, video_file: str) -> str:
+        """Convert video file to signed url"""
+        return await sign_url(video_file)
+    
+    async def _fetch_video_reference(self) -> List[str]:
+        """Fetch video reference"""
+        video_reference = []
+        for camera in self.cameras:
+            if camera.type == CameraType.FILE:
+                path = await self._video_file_to_signed_url(camera.path)
+            else:
+                path = camera.path
+            video_reference.append(path)
+        return video_reference
 
     @before_event([Insert])
     async def create_remote_pipeline(self):
@@ -61,7 +76,7 @@ class DeploymentModel(Document):
         try:
             pipeline_client = PipelineClient(self.gateway.get_api_url())
             self.pipeline_id = await pipeline_client.create_pipeline(
-                video_reference=[camera.path for camera in self.cameras],
+                video_reference=await self._fetch_video_reference(),
                 workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                 workspace_name=self.workspace.name
             )
