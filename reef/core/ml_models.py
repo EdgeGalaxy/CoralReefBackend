@@ -54,6 +54,13 @@ class MLModelCore:
         if not model:
             return await cls.register_roboflow_model(model_id)
         return cls(model=model)
+    
+    @classmethod
+    async def get_model_by_model_alias(cls, model_alias: str) -> 'MLModelCore':
+        model = await MLModelModel.find_one(
+            MLModelModel.version == model_alias
+        )
+        return cls(model=model)
 
     @classmethod
     async def register_custom_model(
