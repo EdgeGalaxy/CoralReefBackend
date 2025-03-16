@@ -57,7 +57,7 @@ class DeploymentModel(Document):
     
     async def _video_file_to_signed_url(self, video_file: str) -> str:
         """Convert video file to signed url"""
-        return await sign_url(video_file)
+        return await sign_url(video_file, expires=3600 * 24 * 30)
     
     async def _fetch_video_reference(self) -> List[str]:
         """Fetch video reference"""
