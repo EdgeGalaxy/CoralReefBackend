@@ -6,7 +6,7 @@ from beanie import Document, Link
 from .workspaces import WorkspaceModel
 
 class MLPlatform(str, Enum):
-    ROBOFLOW = "roboflow"
+    ROBOFLOW = "public"
     CUSTOM = "custom"
 
 class MLTaskType(str, Enum):

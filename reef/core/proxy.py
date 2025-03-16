@@ -1,4 +1,5 @@
 from typing import Dict
+from datetime import datetime
 
 from fastapi.responses import RedirectResponse
 import requests
@@ -79,15 +80,17 @@ class ProxyCore:
             data = gateway_data.model_dump(exclude_none=True)
             # set status to online
             data['status'] = GatewayStatus.ONLINE
+            data['last_heartbeat'] = datetime.now()
             gateway = await GatewayCore.create_gateway(
                 gateway_data=data,
                 workspace=workspace
             )
             logger.info(f"新建网关 {gateway.gateway.id} 成功")
 
-        if gateway.status == GatewayStatus.DELETED:
-            gateway.status = GatewayStatus.ONLINE
-            await gateway.save()
+        # if gateway.status == GatewayStatus.DELETED:
+        #     gateway.status = GatewayStatus.ONLINE
+        #     gateway.last_heartbeat = datetime.now()
+        #     await gateway.save()
         
         gateway_core = GatewayCore(gateway=gateway)
 
@@ -96,7 +99,9 @@ class ProxyCore:
             "ip_address": pingpack_data.ip_address,
             "mac_address": pingpack_data.mac_address.replace(':', ''),
             "version": pingpack_data.inference_server_version,
+            "last_heartbeat": datetime.now()
         }
+        logger.info(f"更新网关 {gateway.gateway.id} 状态为 {GatewayStatus.ONLINE}")
         await gateway_core.update_gateway(gateway_data=gateway_data)
 
     async def handle_inference_usage(self, data: Dict):

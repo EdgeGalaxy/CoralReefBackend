@@ -47,7 +47,7 @@ async def create_custom_model(
     return await MLModelResponse.db_to_schema(model_core.model)
 
 
-@router.post("/roboflow/{model_id}", response_model=MLModelResponse)
+@router.post("/public/{model_id}", response_model=MLModelResponse)
 async def register_roboflow_model(
     model_id: str,
     workspace: WorkspaceModel = Depends(get_workspace),
@@ -60,7 +60,7 @@ async def register_roboflow_model(
     return await MLModelResponse.db_to_schema(model_core.model)
 
 
-@router.get("/roboflow/models", response_model=List[str])
+@router.get("/public/models", response_model=List[str])
 async def list_roboflow_models() -> List[str]:
     """List all Roboflow models."""
     return await MLModelCore.get_roboflow_model_ids()

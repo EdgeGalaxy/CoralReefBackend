@@ -24,10 +24,13 @@ async def check_gateway_status():
 
             for gateway in online_gateways:
                 # 如果最后心跳时间超过阈值，将状态设置为离线
+                print(gateway.last_heartbeat, timeout_threshold)
                 if gateway.last_heartbeat < timeout_threshold:
                     gateway.status = GatewayStatus.OFFLINE
                     await gateway.save()
                     logger.warning(f'网关: {gateway.id} 检测上报时间超限，设置下线!')
+                else:
+                    logger.info(f'网关: {gateway.id} 检测上报时间正常，继续运行!')
 
         except Exception as e:
             logger.exception(f"检查网关状态时出错: {str(e)}")
