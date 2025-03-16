@@ -17,6 +17,8 @@ def get_bucket():
 
 
 async def sign_url(key: str, expires: int = 3600) -> str:
+    if not key:
+        return None
     # Try to get from cache first
     cache_expires = expires - 60
     cached_url = url_cache.get(key, cache_expires)

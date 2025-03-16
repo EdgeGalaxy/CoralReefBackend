@@ -3,6 +3,7 @@ from typing import Optional
 
 from reef.core.ml_models import MLModelCore
 from reef.schemas.ml_models import RoboflowMLModel, RoboflowMLModelResponse
+from reef.utlis.cloud import sign_url
 
 
 router = APIRouter(tags=["roboflow"])
@@ -28,9 +29,9 @@ async def get_roboflow_model(
         colors=model.environment.COLORS,
         modelType=model.model_type,
         classes=model.environment.CLASS_MAP,
-        model=model.onnx_model_url,
-        environment=model.environment_url,
-        rknn_model=model.rknn_model_url,
+        model=await sign_url(model.onnx_model_url),
+        environment=await sign_url(model.environment_url),
+        rknn_model=await sign_url(model.rknn_model_url),
     )
     return data
 
@@ -59,9 +60,9 @@ async def get_roboflow_model_by_dateset_type_and_version(
         colors=model.environment.COLORS,
         modelType=model.model_type,
         classes=model.environment.CLASS_MAP,
-        model=model.onnx_model_url,
-        environment=model.environment_url,
-        rknn_model=model.rknn_model_url,
+        model=await sign_url(model.onnx_model_url),
+        environment=await sign_url(model.environment_url),
+        rknn_model=await sign_url(model.rknn_model_url),
     )
     response = RoboflowMLModelResponse(
         ort=data
