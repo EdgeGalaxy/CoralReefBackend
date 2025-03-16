@@ -101,7 +101,7 @@ class ProxyCore:
             "version": pingpack_data.inference_server_version,
             "last_heartbeat": datetime.now()
         }
-        logger.info(f"更新网关 {gateway.gateway.id} 状态为 {GatewayStatus.ONLINE}")
+        logger.info(f"更新网关 {gateway.id} 状态为 {GatewayStatus.ONLINE}")
         await gateway_core.update_gateway(gateway_data=gateway_data)
 
     async def handle_inference_usage(self, data: Dict):
