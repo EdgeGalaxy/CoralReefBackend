@@ -31,6 +31,10 @@ class RoboflowMLModel(BaseModel):
     rknn_model: Optional[str] = Field(default=None, description="RKNN模型地址")
 
 
+class RoboflowMLModelResponse(BaseModel):
+    ort: RoboflowMLModel = Field(description="ONNX模型信息")
+    
+
 class MLModelBase(BaseModel):
     description: Optional[str] = Field(default=None, description="模型描述")
     platform: MLPlatform = Field(description="模型来源平台")

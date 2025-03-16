@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 
 from reef.core.ml_models import MLModelCore
-from reef.schemas.ml_models import RoboflowMLModel, RoboflowMLModel
+from reef.schemas.ml_models import RoboflowMLModel, RoboflowMLModelResponse
 
 
 router = APIRouter(tags=["roboflow"])
@@ -35,7 +35,7 @@ async def get_roboflow_model(
     return data
 
 
-@router.get("/{endpoint_type}/{dateset_type}/{version}", response_model=RoboflowMLModel)
+@router.get("/{endpoint_type}/{dateset_type}/{version}", response_model=RoboflowMLModelResponse)
 async def get_roboflow_model_by_dateset_type_and_version(
     endpoint_type: str,
     dateset_type: str,
@@ -63,4 +63,7 @@ async def get_roboflow_model_by_dateset_type_and_version(
         environment=model.environment_url,
         rknn_model=model.rknn_model_url,
     )
-    return data
+    response = RoboflowMLModelResponse(
+        ort=data
+    )
+    return response

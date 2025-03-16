@@ -1,6 +1,5 @@
 from typing import List
 from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse
 from loguru import logger
 
 from reef.core.ml_models import MLModelCore
