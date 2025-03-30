@@ -111,7 +111,6 @@ class MLModelCore:
     async def register_roboflow_model(
         cls,
         model_id: str,
-        workspace: Optional[WorkspaceModel] = None,
     ) -> 'MLModelCore':
         api_data = await get_roboflow_model_data(model_id)
         model_alias = resolve_roboflow_model_alias(model_id)
@@ -133,8 +132,6 @@ class MLModelCore:
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
-        if workspace:
-            model.workspace = workspace
         await model.insert()
         logger.info(f'Created ML model: {model.id}')
         return cls(model=model)

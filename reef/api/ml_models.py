@@ -53,8 +53,7 @@ async def register_roboflow_model(
 ) -> MLModelResponse:
     """Register a Roboflow model."""
     model_core = await MLModelCore.register_roboflow_model(
-        model_id=model_id,
-        workspace=workspace
+        model_id=model_id
     )
     return await MLModelResponse.db_to_schema(model_core.model)
 

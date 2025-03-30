@@ -2,9 +2,10 @@ from enum import Enum
 from typing import List, Dict, Any, Union
 
 from asyncer import asyncify
+from loguru import logger
 from inference_sdk import InferenceHTTPClient
-from reef.config import settings
 
+from reef.config import settings
 
 class RemotePipelineStatus:
     SUCCESS = "success"
@@ -20,7 +21,7 @@ class PipelineClient:
     @property
     async def pipeline_ids(self) -> List[str]:
         response = await asyncify(self.client.list_inference_pipelines)()
-        print('response', response)
+        logger.debug(f'Remote Pipeline ids: {response}')
         return [p for p in response['pipelines']]
 
     async def create_pipeline(
