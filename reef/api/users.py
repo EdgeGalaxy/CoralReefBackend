@@ -17,6 +17,3 @@ router.include_router(
 router.include_router(
     fastapi_users.get_verify_router(UserRead),
 )
-router.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
-)
