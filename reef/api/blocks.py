@@ -10,7 +10,9 @@ from reef.schemas.blocks import (
     BlockTranslationSync
 )
 
+
 router = APIRouter(prefix="/blocks", tags=["blocks"])
+
 
 @router.post("/", response_model=BlockTranslationResponse, status_code=status.HTTP_201_CREATED)
 async def create_block_translation(block: BlockTranslationCreate):
@@ -23,6 +25,7 @@ async def create_block_translation(block: BlockTranslationCreate):
             detail=str(e)
         )
 
+
 @router.get("/", response_model=List[BlockTranslationResponse])
 async def list_block_translations(
     language: Optional[Language] = None,
@@ -30,6 +33,7 @@ async def list_block_translations(
 ):
     """获取区块翻译列表"""
     return await BlockCore.get_block_translations(language, disabled)
+
 
 @router.get("/{block_id}", response_model=BlockTranslationResponse)
 async def get_block_translation(block_id: str):
@@ -42,6 +46,7 @@ async def get_block_translation(block_id: str):
         )
     return block
 
+
 @router.put("/{block_id}", response_model=BlockTranslationResponse)
 async def update_block_translation(block_id: str, block: BlockTranslationUpdate):
     """更新区块翻译"""
@@ -53,6 +58,7 @@ async def update_block_translation(block_id: str, block: BlockTranslationUpdate)
         )
     return updated_block
 
+
 @router.delete("/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_block_translation(block_id: str):
     """删除区块翻译"""
@@ -61,6 +67,7 @@ async def delete_block_translation(block_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Block translation not found"
         )
+
 
 @router.post("/sync", response_model=List[BlockTranslationResponse])
 async def sync_block_translations(sync_data: BlockTranslationSync):

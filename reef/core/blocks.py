@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict
 from datetime import datetime
-import httpx
+import requests
+from asyncer import asyncify
 
 from reef.models.blocks import BlockTranslation, Language
 from reef.schemas.blocks import BlockTranslationCreate, BlockTranslationUpdate, BlockTranslationSync
@@ -64,7 +65,7 @@ class BlockCore:
         if not existing:
             return None
 
-        update_data = block.dict(exclude_unset=True)
+        update_data = block.model_dump(exclude_unset=True)
         update_data["updated_at"] = datetime.now()
         
         await existing.update({"$set": update_data})
@@ -82,30 +83,25 @@ class BlockCore:
     @staticmethod
     async def sync_block_translations(sync_data: BlockTranslationSync) -> List[BlockTranslation]:
         """同步第三方接口的区块数据"""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(sync_data.source_url)
-            if response.status_code != 200:
-                raise ValueError("Failed to fetch data from source")
+        response = await asyncify(requests.get)(sync_data.source_url)
+        
+        if response.status_code != 200:
+            raise ValueError("Failed to fetch data from source")
+        
+        blocks = response.json()
+        synced_blocks = []
+        
+        for block in blocks:
+            block_doc = BlockTranslation(
+                language=sync_data.language,
+                human_friendly_block_name=block["human_friendly_block_name"],
+                block_schema=block["block_schema"],
+                manifest_type_identifier=block["manifest_type_identifier"],
+                disabled=True,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            await block_doc.insert()
+            synced_blocks.append(block_doc)
             
-            blocks_data = response.json()
-            synced_blocks = []
-            
-            for block_data in blocks_data:
-                block_doc = BlockTranslation(
-                    language=sync_data.language,
-                    human_friendly_block_name=block_data.get("name", ""),
-                    block_schema=block_data.get("schema", {}),
-                    manifest_type_identifier=block_data.get("identifier", ""),
-                    disabled=False,
-                    created_at=datetime.now(),
-                    updated_at=datetime.now()
-                )
-                await block_doc.insert()
-                synced_blocks.append(block_doc)
-                
-            return synced_blocks
-
-    @staticmethod
-    async def get_block(block_id: str) -> Optional[BlockTranslation]:
-        """获取特定区块翻译"""
-        return await BlockTranslation.get(block_id)
+        return synced_blocks
