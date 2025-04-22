@@ -28,11 +28,11 @@ async def create_block_translation(block: BlockTranslationCreate):
 
 @router.get("/", response_model=List[BlockTranslationResponse])
 async def list_block_translations(
-    language: Optional[Language] = None,
     disabled: Optional[bool] = None
 ):
     """获取区块翻译列表"""
-    return await BlockCore.get_block_translations(language, disabled)
+    blocks = await BlockCore.get_block_translations(disabled)
+    return [BlockTranslationResponse.db_to_schema(block) for block in blocks]
 
 
 @router.get("/{block_id}", response_model=BlockTranslationResponse)

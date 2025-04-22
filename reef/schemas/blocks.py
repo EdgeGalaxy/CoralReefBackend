@@ -8,7 +8,7 @@ class BlockTranslationBase(BaseModel):
     """区块翻译基础模型"""
     language: Language = Field(description="语言类型")
     human_friendly_block_name: str = Field(description="区块友好名称翻译")
-    block_schema: Dict[str, Dict[str, str]] = Field(description="区块schema的翻译映射")
+    block_schema: Dict = Field(description="区块schema的翻译映射")
     manifest_type_identifier: str = Field(description="用于识别区块manifest的标识符")
     disabled: bool = Field(default=False, description="是否禁用")
 
@@ -20,7 +20,7 @@ class BlockTranslationUpdate(BaseModel):
     """更新区块翻译请求模型"""
     language: Optional[Language] = None
     human_friendly_block_name: Optional[str] = None
-    block_schema: Optional[Dict[str, Dict[str, str]]] = None
+    block_schema: Optional[Dict] = None
     manifest_type_identifier: Optional[str] = None
     disabled: Optional[bool] = None
 
@@ -31,9 +31,22 @@ class BlockTranslationResponse(BlockTranslationBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+    @classmethod
+    def db_to_schema(cls, db: "BlockTranslation") -> "BlockTranslationResponse":
+        return cls(
+            id=str(db.id),
+            language=db.language,
+            human_friendly_block_name=db.human_friendly_block_name,
+            block_schema=db.block_schema,
+            manifest_type_identifier=db.manifest_type_identifier,
+            disabled=db.disabled,
+            created_at=db.created_at,
+            updated_at=db.updated_at
+        )
 
 class BlockTranslationSync(BaseModel):
     """区块翻译同步请求模型"""
-    source_url: str = Field(description="第三方数据源URL")
-    language: Language = Field(description="需要同步的语言类型")
+    source_url: str = "https://detect.roboflow.com/workflows/blocks/describe"
+    language: Language = Language.ZH

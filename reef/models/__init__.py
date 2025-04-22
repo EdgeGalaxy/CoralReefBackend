@@ -15,7 +15,7 @@ from .ml_models import (
     ResizeConfig,
     AutoOrientConfig
 )
-
+from .blocks import BlockTranslation
 
 
 INIT_MODELS = [
@@ -28,6 +28,7 @@ INIT_MODELS = [
     DeploymentModel,
     WorkspaceModel,
     WorkspaceUserModel,
+    BlockTranslation
 ]
 
 __all__ = [

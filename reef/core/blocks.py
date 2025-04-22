@@ -27,13 +27,10 @@ class BlockCore:
 
     @staticmethod
     async def get_block_translations(
-        language: Optional[Language] = None,
         disabled: Optional[bool] = None
     ) -> List[BlockTranslation]:
         """获取区块翻译列表"""
         query = {}
-        if language:
-            query["language"] = language
         if disabled is not None:
             query["disabled"] = disabled
         
@@ -83,16 +80,16 @@ class BlockCore:
     @staticmethod
     async def sync_block_translations(sync_data: BlockTranslationSync) -> List[BlockTranslation]:
         """同步第三方接口的区块数据"""
-        response = await asyncify(requests.get)(sync_data.source_url)
+        response = await asyncify(requests.post)(sync_data.source_url)
         
         if response.status_code != 200:
             raise ValueError("Failed to fetch data from source")
         
-        blocks = response.json()
+        blocks = response.json()['blocks']
         synced_blocks = []
         
-        for block in blocks:
-            block_doc = BlockTranslation(
+        block_docs = [
+            BlockTranslation(
                 language=sync_data.language,
                 human_friendly_block_name=block["human_friendly_block_name"],
                 block_schema=block["block_schema"],
@@ -101,7 +98,10 @@ class BlockCore:
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
-            await block_doc.insert()
-            synced_blocks.append(block_doc)
+            for block in blocks
+        ]
+        if block_docs:
+            await BlockTranslation.insert_many(block_docs)
+        synced_blocks.extend(block_docs)
             
         return synced_blocks
