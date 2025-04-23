@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 
 from reef.core.blocks import BlockCore
@@ -7,7 +7,9 @@ from reef.schemas.blocks import (
     BlockTranslationCreate,
     BlockTranslationUpdate,
     BlockTranslationResponse,
-    BlockTranslationSync
+    BlockTranslationSync,
+    BlockTranslationPaginatedResponse,
+    PaginationParams
 )
 
 
@@ -26,13 +28,14 @@ async def create_block_translation(block: BlockTranslationCreate):
         )
 
 
-@router.get("/", response_model=List[BlockTranslationResponse])
+@router.get("/", response_model=BlockTranslationPaginatedResponse)
 async def list_block_translations(
+    pagination: PaginationParams = Depends(),
     disabled: Optional[bool] = None
 ):
     """获取区块翻译列表"""
-    blocks = await BlockCore.get_block_translations(disabled)
-    return [BlockTranslationResponse.db_to_schema(block) for block in blocks]
+    blocks = await BlockCore.get_block_translations(pagination, disabled)
+    return blocks
 
 
 @router.get("/{block_id}", response_model=BlockTranslationResponse)

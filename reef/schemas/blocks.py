@@ -1,8 +1,21 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 from reef.models.blocks import Language
+
+class PaginationParams(BaseModel):
+    """分页参数模型"""
+    page: int = Field(default=1, ge=1, description="页码")
+    page_size: int = Field(default=10, ge=1, le=100, description="每页数量")
+
+class PaginatedResponse(BaseModel):
+    """分页响应模型"""
+    total: int = Field(description="总记录数")
+    page: int = Field(description="当前页码")
+    page_size: int = Field(description="每页数量")
+    total_pages: int = Field(description="总页数")
+    items: List["BlockTranslationResponse"] = Field(description="当前页数据")
 
 class BlockTranslationBase(BaseModel):
     """区块翻译基础模型"""
@@ -45,6 +58,14 @@ class BlockTranslationResponse(BlockTranslationBase):
             created_at=db.created_at,
             updated_at=db.updated_at
         )
+
+class BlockTranslationPaginatedResponse(PaginatedResponse):
+    """区块翻译分页响应模型"""
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    items: List[BlockTranslationResponse]
 
 class BlockTranslationSync(BaseModel):
     """区块翻译同步请求模型"""

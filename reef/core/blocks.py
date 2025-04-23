@@ -4,7 +4,8 @@ import requests
 from asyncer import asyncify
 
 from reef.models.blocks import BlockTranslation, Language
-from reef.schemas.blocks import BlockTranslationCreate, BlockTranslationUpdate, BlockTranslationSync
+from reef.schemas.blocks import (BlockTranslationCreate, BlockTranslationUpdate, BlockTranslationSync,
+    PaginationParams, BlockTranslationPaginatedResponse, BlockTranslationResponse)
 
 class BlockCore:
     @staticmethod
@@ -27,14 +28,29 @@ class BlockCore:
 
     @staticmethod
     async def get_block_translations(
+        pagination: PaginationParams,
         disabled: Optional[bool] = None
-    ) -> List[BlockTranslation]:
+    ) -> BlockTranslationPaginatedResponse:
         """获取区块翻译列表"""
         query = {}
         if disabled is not None:
             query["disabled"] = disabled
         
-        return await BlockTranslation.find(query).to_list()
+        # 计算总记录数
+        total = await BlockTranslation.find(query).count()
+        total_pages = (total + pagination.page_size - 1) // pagination.page_size
+        
+        # 获取分页数据
+        skip = (pagination.page - 1) * pagination.page_size
+        blocks = await BlockTranslation.find(query).skip(skip).limit(pagination.page_size).to_list()
+        
+        return BlockTranslationPaginatedResponse(
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+            items=[BlockTranslationResponse.db_to_schema(block) for block in blocks]
+        )
 
     @staticmethod
     async def get_block_translation(block_id: str) -> Optional[BlockTranslation]:
