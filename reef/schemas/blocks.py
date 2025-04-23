@@ -2,7 +2,8 @@ from typing import Dict, Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from reef.models.blocks import Language
+from reef.models.blocks import Language, BlockTranslation
+
 
 class PaginationParams(BaseModel):
     """分页参数模型"""
@@ -47,7 +48,7 @@ class BlockTranslationResponse(BlockTranslationBase):
         from_attributes = True
 
     @classmethod
-    def db_to_schema(cls, db: "BlockTranslation") -> "BlockTranslationResponse":
+    def db_to_schema(cls, db: BlockTranslation) -> "BlockTranslationResponse":
         return cls(
             id=str(db.id),
             language=db.language,

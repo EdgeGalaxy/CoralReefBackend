@@ -13,7 +13,7 @@ from reef.schemas.blocks import (
 )
 
 
-router = APIRouter(prefix="/blocks", tags=["blocks"])
+router = APIRouter(prefix="/workflows/blocks", tags=["blocks"])
 
 
 @router.post("/", response_model=BlockTranslationResponse, status_code=status.HTTP_201_CREATED)
