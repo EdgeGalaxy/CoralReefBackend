@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 
 from reef.core.blocks import BlockCore
@@ -30,11 +30,20 @@ async def create_block_translation(block: BlockTranslationCreate):
 
 @router.get("/", response_model=BlockTranslationPaginatedResponse)
 async def list_block_translations(
-    pagination: PaginationParams = Depends(),
+    page: Optional[int] = Query(1, ge=1, description="页码"),
+    page_size: Optional[int] = Query(10, ge=1, le=100, description="每页数量"),
+    sort_by: Optional[str] = Query(None, description="排序字段"),
+    sort_desc: bool = Query(False, description="是否降序"),
     disabled: Optional[bool] = None
 ):
     """获取区块翻译列表"""
-    blocks = await BlockCore.get_block_translations(pagination, disabled)
+    pagination = PaginationParams(page=page, page_size=page_size) if page and page_size else None
+    blocks = await BlockCore.get_block_translations(
+        pagination=pagination,
+        disabled=disabled,
+        sort_by=sort_by,
+        sort_desc=sort_desc
+    )
     return blocks
 
 

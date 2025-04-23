@@ -28,29 +28,52 @@ class BlockCore:
 
     @staticmethod
     async def get_block_translations(
-        pagination: PaginationParams,
-        disabled: Optional[bool] = None
+        pagination: Optional[PaginationParams] = None,
+        disabled: Optional[bool] = None,
+        sort_by: Optional[str] = None,
+        sort_desc: bool = False
     ) -> BlockTranslationPaginatedResponse:
         """获取区块翻译列表"""
         query = {}
         if disabled is not None:
             query["disabled"] = disabled
         
+        # 构建查询
+        find_query = BlockTranslation.find(query)
+        
         # 计算总记录数
-        total = await BlockTranslation.find(query).count()
-        total_pages = (total + pagination.page_size - 1) // pagination.page_size
+        total = await find_query.count()
         
-        # 获取分页数据
-        skip = (pagination.page - 1) * pagination.page_size
-        blocks = await BlockTranslation.find(query).skip(skip).limit(pagination.page_size).to_list()
+        # 添加排序
+        if sort_by:
+            find_query = find_query.sort(
+                sort_by, -1 if sort_desc else 1
+            )
         
-        return BlockTranslationPaginatedResponse(
-            total=total,
-            page=pagination.page,
-            page_size=pagination.page_size,
-            total_pages=total_pages,
-            items=[BlockTranslationResponse.db_to_schema(block) for block in blocks]
-        )
+        # 如果提供了分页参数，则应用分页
+        if pagination:
+            total_pages = (total + pagination.page_size - 1) // pagination.page_size
+            skip = (pagination.page - 1) * pagination.page_size
+            find_query = find_query.skip(skip).limit(pagination.page_size)
+            blocks = await find_query.to_list()
+            
+            return BlockTranslationPaginatedResponse(
+                total=total,
+                page=pagination.page,
+                page_size=pagination.page_size,
+                total_pages=total_pages,
+                items=[BlockTranslationResponse.db_to_schema(block) for block in blocks]
+            )
+        else:
+            # 如果没有分页参数，返回所有记录
+            blocks = await find_query.to_list()
+            return BlockTranslationPaginatedResponse(
+                total=total,
+                page=1,
+                page_size=total,
+                total_pages=1,
+                items=[BlockTranslationResponse.db_to_schema(block) for block in blocks]
+            )
 
     @staticmethod
     async def get_block_translation(block_id: str) -> Optional[BlockTranslation]:
