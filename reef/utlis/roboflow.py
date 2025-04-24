@@ -1,5 +1,7 @@
 import uuid
 import platform
+import json
+from pathlib import Path
 from typing import List, Dict
 
 import requests
@@ -8,6 +10,7 @@ from inference_sdk.http.utils.aliases import resolve_roboflow_model_alias, REGIS
 
 from reef.config import settings
 from reef.exceptions import RemoteCallError
+from reef.utlis.cache import url_cache
 from reef.utlis._utils import _add_params_to_url
 from reef.utlis.cloud import backup_remote_url
 
@@ -56,3 +59,16 @@ async def get_roboflow_model_ids() -> List[str]:
 
 async def get_models_type() -> List[str]:
     return sorted(list(set([model_id.split("-")[0] for model_id in list(REGISTERED_ALIASES.keys())])))
+
+
+async def get_base_blocks_describe() -> Dict:
+    """获取区块描述信息，包含翻译后的 schema"""
+    expires = 3600 * 24 * 30
+    # 读取 describe.json 文件
+    data = url_cache.get("base_blocks_describe", expires)
+    if not data:
+        describe_json_path = Path(__file__).parent.parent / 'statics' / 'describe.json'
+        with open(describe_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        url_cache.set("base_blocks_describe", expires, data)
+    return data

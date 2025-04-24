@@ -30,7 +30,7 @@ class BlockCore:
     async def get_block_translations(
         pagination: Optional[PaginationParams] = None,
         disabled: Optional[bool] = None,
-        sort_by: Optional[str] = 'sync_at',
+        sort_by: Optional[str] = None,
         sort_desc: bool = True
     ) -> BlockTranslationPaginatedResponse:
         """获取区块翻译列表"""

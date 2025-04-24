@@ -19,7 +19,7 @@ class BlockTranslation(Document):
     human_friendly_block_name: str = Field(description="区块友好名称翻译")
     block_schema: Dict = Field(description="区块schema的翻译映射")
     manifest_type_identifier: str = Field(description="用于识别区块manifest的标识符")
-    execution_engine_compatibility: str = Field(description="执行引擎的版本兼容性区间，包含最小版本和最大版本")
+    execution_engine_compatibility: Optional[str] = Field(default='', description="执行引擎的版本兼容性区间，包含最小版本和最大版本")
     disabled: bool = Field(default=True, description="是否禁用")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")

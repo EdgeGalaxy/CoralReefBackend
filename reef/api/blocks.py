@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Query
-from typing import List, Optional
+from typing import Optional
+from copy import deepcopy
 
 from reef.core.blocks import BlockCore
 from reef.schemas import CommonResponse
@@ -11,6 +12,8 @@ from reef.schemas.blocks import (
     BlockTranslationPaginatedResponse,
     PaginationParams
 )
+from reef.utlis.roboflow import get_base_blocks_describe
+from reef.models.blocks import BlockTranslation
 
 
 router = APIRouter(prefix="/workflows/blocks", tags=["blocks"])
@@ -30,8 +33,8 @@ async def create_block_translation(block: BlockTranslationCreate):
 
 @router.get("/", response_model=BlockTranslationPaginatedResponse)
 async def list_block_translations(
-    page: Optional[int] = Query(1, ge=1, description="页码"),
-    page_size: Optional[int] = Query(10, ge=1, le=100, description="每页数量"),
+    page: Optional[int] = Query(None, ge=1, description="页码"),
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
     sort_by: Optional[str] = Query('sync_at', description="排序字段"),
     sort_desc: bool = Query(True, description="是否降序"),
     disabled: Optional[bool] = None
@@ -110,3 +113,31 @@ async def toggle_block_status(block_id: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.get("/describe/all")
+async def get_blocks_describe():
+    """获取区块描述信息，包含翻译后的 schema"""
+    # 获取所有区块翻译
+    blocks = await BlockTranslation.find({'disabled': False}).to_list()
+    
+    # 创建 manifest_type_identifier 到 block_schema 的映射
+    identifier_block_mapper = {
+        block.manifest_type_identifier: block.block_schema
+        for block in blocks
+    }
+    
+    _describe_blocks = []
+    describe = await get_base_blocks_describe()
+    for block in describe['blocks']:
+        _block = deepcopy(block)
+        manifest_type_identifier = block['manifest_type_identifier']
+        if manifest_type_identifier not in identifier_block_mapper:
+            continue
+        _block['block_schema'] = identifier_block_mapper[manifest_type_identifier]
+        _describe_blocks.append(_block)
+    
+    return {
+        'blocks': _describe_blocks,
+        'kinds_connections': describe['kinds_connections']
+    }

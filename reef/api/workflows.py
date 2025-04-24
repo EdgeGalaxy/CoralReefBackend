@@ -12,7 +12,6 @@ from reef.schemas.workflows import (
 )
 from reef.api._depends import check_user_has_workspace_permission, get_workflow, get_workspace
 
-
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/workflows",
     tags=["workflows"],
