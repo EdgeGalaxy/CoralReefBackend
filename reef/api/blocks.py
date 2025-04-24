@@ -68,7 +68,7 @@ async def update_block_translation(block_id: str, block: BlockTranslationUpdate)
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Block translation not found"
         )
-    return updated_block
+    return BlockTranslationResponse.db_to_schema(updated_block)
 
 
 @router.delete("/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
