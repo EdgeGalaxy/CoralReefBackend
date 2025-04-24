@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -24,6 +24,7 @@ class BlockTranslationBase(BaseModel):
     human_friendly_block_name: str = Field(description="区块友好名称翻译")
     block_schema: Dict = Field(description="区块schema的翻译映射")
     manifest_type_identifier: str = Field(description="用于识别区块manifest的标识符")
+    execution_engine_compatibility: str = Field(description="执行引擎的版本兼容性区间，包含最小版本和最大版本")
     disabled: bool = Field(default=False, description="是否禁用")
 
 class BlockTranslationCreate(BlockTranslationBase):
@@ -41,6 +42,7 @@ class BlockTranslationUpdate(BaseModel):
 class BlockTranslationResponse(BlockTranslationBase):
     """区块翻译响应模型"""
     id: str
+    sync_at: datetime
     created_at: datetime
     updated_at: datetime
 
@@ -55,7 +57,9 @@ class BlockTranslationResponse(BlockTranslationBase):
             human_friendly_block_name=db.human_friendly_block_name,
             block_schema=db.block_schema,
             manifest_type_identifier=db.manifest_type_identifier,
+            execution_engine_compatibility=db.execution_engine_compatibility,
             disabled=db.disabled,
+            sync_at=db.sync_at,
             created_at=db.created_at,
             updated_at=db.updated_at
         )

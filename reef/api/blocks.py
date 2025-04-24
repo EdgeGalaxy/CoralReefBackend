@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
 
 from reef.core.blocks import BlockCore
-from reef.models.blocks import Language
+from reef.schemas import CommonResponse
 from reef.schemas.blocks import (
     BlockTranslationCreate,
     BlockTranslationUpdate,
@@ -32,8 +32,8 @@ async def create_block_translation(block: BlockTranslationCreate):
 async def list_block_translations(
     page: Optional[int] = Query(1, ge=1, description="页码"),
     page_size: Optional[int] = Query(10, ge=1, le=100, description="每页数量"),
-    sort_by: Optional[str] = Query(None, description="排序字段"),
-    sort_desc: bool = Query(False, description="是否降序"),
+    sort_by: Optional[str] = Query('sync_at', description="排序字段"),
+    sort_desc: bool = Query(True, description="是否降序"),
     disabled: Optional[bool] = None
 ):
     """获取区块翻译列表"""
@@ -81,13 +81,32 @@ async def delete_block_translation(block_id: str):
         )
 
 
-@router.post("/sync", response_model=List[BlockTranslationResponse])
+@router.post("/sync", response_model=CommonResponse)
 async def sync_block_translations(sync_data: BlockTranslationSync):
     """同步第三方接口的区块数据"""
     try:
-        return await BlockCore.sync_block_translations(sync_data)
+        await BlockCore.sync_block_translations(sync_data)
+        return CommonResponse(message="同步成功")
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e)
+        )
+
+
+@router.patch("/{block_id}/toggle", response_model=BlockTranslationResponse)
+async def toggle_block_status(block_id: str):
+    """切换区块启用/禁用状态"""
+    try:
+        block = await BlockCore.toggle_block_status(block_id)
+        if not block:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Block translation not found"
+            )
+        return BlockTranslationResponse.db_to_schema(block)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
