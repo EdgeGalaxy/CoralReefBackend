@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from reef.models import WorkspaceRole, WorkspaceModel, WorkspaceUserModel
@@ -33,6 +33,14 @@ class WorkspaceResponse(BaseModel):
         )
 
 
+class WorkspaceUsers(BaseModel):
+    id: str
+    username: str
+    email: str
+    role: WorkspaceRole
+    join_at: datetime
+
+
 class WorkspaceDetailResponse(BaseModel):
     """工作空间详细信息响应模型"""
     id: str
@@ -44,4 +52,4 @@ class WorkspaceDetailResponse(BaseModel):
     current_user_role: str
     created_at: datetime
     updated_at: datetime
-
+    users: Optional[List[WorkspaceUsers]] = None

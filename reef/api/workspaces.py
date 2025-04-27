@@ -82,6 +82,7 @@ async def remove_workspace_user(
 @router.get("/me", response_model=PaginationResponse[WorkspaceDetailResponse])
 async def get_my_workspaces(
     current_user: UserModel = Depends(current_user),
+    with_users: bool = Query(False, description="是否包含用户信息"),
     page: Optional[int] = Query(1, description="页码，从1开始", ge=1),
     page_size: Optional[int] = Query(10, description="每页数量", ge=1, le=100)
 ) -> PaginationResponse[WorkspaceDetailResponse]:
@@ -102,7 +103,8 @@ async def get_my_workspaces(
     workspaces, total = await WorkspaceCore.get_user_workspaces(
         current_user,
         skip=skip,
-        limit=page_size
+        limit=page_size,
+        with_users=with_users,
     )
     
     # 计算总页数

@@ -8,7 +8,7 @@ from reef.models import (
     WorkspaceUserModel,
     WorkspaceRole
 )
-from reef.schemas.workspaces import WorkspaceDetailResponse
+from reef.schemas.workspaces import WorkspaceDetailResponse, WorkspaceUsers
 from reef.exceptions import ValidationError
 
 class WorkspaceCore:
@@ -95,6 +95,7 @@ class WorkspaceCore:
     async def get_user_workspaces(
         cls,
         user: UserModel,
+        with_users: bool = False,
         skip: Optional[int] = None,
         limit: Optional[int] = None
     ) -> Tuple[List[WorkspaceDetailResponse], int]:
@@ -127,6 +128,10 @@ class WorkspaceCore:
         result = []
         
         for uw in await user_workspaces.to_list():
+            users = await WorkspaceUserModel.find(
+                WorkspaceUserModel.workspace.id == uw.workspace.id,
+                fetch_links=True
+            ).to_list() if with_users else []
             row = WorkspaceDetailResponse(
                 id=str(uw.workspace.id),
                 name=uw.workspace.name,
@@ -139,6 +144,16 @@ class WorkspaceCore:
                 current_user_role=uw.role,
                 created_at=uw.workspace.created_at,
                 updated_at=uw.workspace.updated_at,
+                users=[
+                    WorkspaceUsers(
+                        id=str(user.user.id),
+                        username=user.user.username,
+                        email=user.user.email,
+                        role=user.role,
+                        join_at=user.created_at
+                    )
+                    for user in users
+                ]
             )
             result.append(row)
             
