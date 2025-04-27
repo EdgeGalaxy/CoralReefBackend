@@ -1,13 +1,16 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from reef.core.workspaces import WorkspaceCore
 from reef.models import UserModel, WorkspaceModel, WorkspaceRole
-from reef.core.users import current_user
-from reef.schemas import CommonResponse
+from reef.core.users import current_user, super_user
+from reef.schemas import CommonResponse, PaginationResponse
 from reef.schemas.workspaces import (
     WorkspaceCreate,
     WorkspaceResponse,
+    WorkspaceDetailResponse,
 )
+from math import ceil
+
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -24,27 +27,29 @@ async def create_workspace(
     return WorkspaceResponse.db_to_schema(workspace_core.workspace)
 
 
-@router.get("/{workspace_id}/users/{owner_user_id}/{role}/{invited_user_id}", response_model=CommonResponse)
+@router.get("/{workspace_id}/users/{owner_user_id}/{role}/{invited_user_email}", response_model=CommonResponse)
 async def add_workspace_user(
     workspace_id: str,
     owner_user_id: str,
     role: WorkspaceRole,
-    invited_user_id: str,
+    invited_user_email: str,
     user: UserModel = Depends(current_user)
 ) -> CommonResponse:
-    workspace = await WorkspaceModel.get(workspace_id)
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
     if not workspace:
         raise HTTPException(status_code=404, detail="工作空间不存在")
     owner_user = await UserModel.get(owner_user_id)
     if not owner_user:  
         raise HTTPException(status_code=404, detail="邀请用户不存在")
 
-    invited_user = await UserModel.get(invited_user_id)
+    invited_user = await UserModel.find_one(UserModel.email == invited_user_email)
     if not invited_user:
         raise HTTPException(status_code=404, detail="被邀请用户不存在")
+
+    print(f"owner_user_id: {owner_user_id}, user.id: {user.id}")
     
-    if invited_user_id != user.id:
-        raise HTTPException(status_code=400, detail="邀请用户与当前登陆用户不一致")
+    if owner_user_id != str(user.id):
+        raise HTTPException(status_code=400, detail="管理员用户与当前登陆用户不一致")
 
     if role not in WorkspaceRole:
         raise HTTPException(status_code=400, detail="角色不存在")
@@ -63,7 +68,7 @@ async def remove_workspace_user(
     user_id: str,
     user: UserModel = Depends(current_user)
 ):
-    workspace = await WorkspaceModel.get(workspace_id)
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
     if not workspace:
         raise HTTPException(status_code=404, detail="工作空间不存在")
         
@@ -76,10 +81,41 @@ async def remove_workspace_user(
     return CommonResponse(message="用户已从工作空间移除")
 
 
-@router.get("/me", response_model=List[WorkspaceResponse])
+@router.get("/me", response_model=PaginationResponse[WorkspaceDetailResponse])
 async def get_my_workspaces(
-    is_admin: bool = False,
-    user: UserModel = Depends(current_user)
-) -> List[WorkspaceResponse]:
-    workspaces = await WorkspaceCore.get_user_workspaces(user=user, is_admin=is_admin)
-    return [WorkspaceResponse.db_to_schema(w) for w in workspaces]
+    current_user: UserModel = Depends(current_user),
+    with_users: bool = Query(False, description="是否包含用户信息"),
+    page: Optional[int] = Query(1, description="页码，从1开始", ge=1),
+    page_size: Optional[int] = Query(10, description="每页数量", ge=1, le=100)
+) -> PaginationResponse[WorkspaceDetailResponse]:
+    """获取当前用户的工作空间列表，包含用户数量和角色信息
+    
+    Args:
+        current_user: 当前用户
+        page: 页码，从1开始
+        page_size: 每页数量
+        
+    Returns:
+        PaginationResponse: 分页响应，包含工作空间详细信息列表
+    """
+    # 计算skip和limit
+    skip = (page - 1) * page_size
+    
+    # 获取工作空间列表和总数
+    workspaces, total = await WorkspaceCore.get_user_workspaces(
+        current_user,
+        skip=skip,
+        limit=page_size,
+        with_users=with_users,
+    )
+    
+    # 计算总页数
+    total_pages = ceil(total / page_size)
+    
+    return PaginationResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        items=workspaces
+    )

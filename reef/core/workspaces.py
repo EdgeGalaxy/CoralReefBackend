@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 from loguru import logger
 
 from reef.models import (
@@ -8,7 +8,7 @@ from reef.models import (
     WorkspaceUserModel,
     WorkspaceRole
 )
-
+from reef.schemas.workspaces import WorkspaceDetailResponse, WorkspaceUsers
 from reef.exceptions import ValidationError
 
 class WorkspaceCore:
@@ -80,9 +80,6 @@ class WorkspaceCore:
         if self.workspace.owner_user.id == user.id:
             raise ValidationError(f'工作空间所有者无法退出工作空间!')
         
-        if user != self.workspace.owner_user:
-            raise ValidationError(f'只有工作空间所有者才能删除用户!')
-            
         result = await WorkspaceUserModel.find_one(
             WorkspaceUserModel.user.id == user.id,
             WorkspaceUserModel.workspace.id == self.workspace.id
@@ -91,15 +88,70 @@ class WorkspaceCore:
         if result:
             logger.info(f'用户 {user.id} 退出工作空间: {self.workspace.id}')
 
-    @staticmethod
-    async def get_user_workspaces(user: UserModel, is_admin: bool = False) -> List[WorkspaceModel]:
-        """Get all workspaces for a user"""
-        workspace_users = await WorkspaceUserModel.find(
+    @classmethod
+    async def get_user_workspaces(
+        cls,
+        user: UserModel,
+        with_users: bool = False,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None
+    ) -> Tuple[List[WorkspaceDetailResponse], int]:
+        """获取用户的工作空间列表，包含每个工作空间的用户数量和当前用户角色
+        
+        Args:
+            user: 用户模型
+            skip: 跳过的记录数
+            limit: 返回的记录数
+            
+        Returns:
+            Tuple[List[dict], int]: 包含工作空间信息的字典列表和总数，每个字典包含:
+                - workspace: 工作空间信息
+                - user_count: 该工作空间的用户数量
+                - current_user_role: 当前用户在该工作空间的角色
+        """
+        user_workspaces = WorkspaceUserModel.find(
             WorkspaceUserModel.user.id == user.id,
-            fetch_links=True
-        ).to_list()
+            fetch_links=True,
+            sort='-created_at'
+        )
+
+        total = await user_workspaces.count()
+
+        if skip is not None:
+            user_workspaces = user_workspaces.skip(skip)
+        if limit is not None:
+            user_workspaces = user_workspaces.limit(limit)
         
-        if is_admin:
-            workspace_users = [wu for wu in workspace_users if wu.role == WorkspaceRole.ADMIN]
+        result = []
         
-        return [wu.workspace for wu in workspace_users]
+        for uw in await user_workspaces.to_list():
+            users = await WorkspaceUserModel.find(
+                WorkspaceUserModel.workspace.id == uw.workspace.id,
+                fetch_links=True
+            ).to_list() if with_users else []
+            row = WorkspaceDetailResponse(
+                id=str(uw.workspace.id),
+                name=uw.workspace.name,
+                description=uw.workspace.description,
+                max_users=uw.workspace.max_users,
+                owner_user_id=str(uw.workspace.owner_user.id),
+                user_count=await WorkspaceUserModel.find(
+                    WorkspaceUserModel.workspace.id == uw.workspace.id
+                ).count(),
+                current_user_role=uw.role,
+                created_at=uw.workspace.created_at,
+                updated_at=uw.workspace.updated_at,
+                users=[
+                    WorkspaceUsers(
+                        id=str(user.user.id),
+                        username=user.user.username,
+                        email=user.user.email,
+                        role=user.role,
+                        join_at=user.created_at
+                    )
+                    for user in users
+                ]
+            )
+            result.append(row)
+            
+        return result, total
