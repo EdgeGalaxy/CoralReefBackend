@@ -27,27 +27,29 @@ async def create_workspace(
     return WorkspaceResponse.db_to_schema(workspace_core.workspace)
 
 
-@router.get("/{workspace_id}/users/{owner_user_id}/{role}/{invited_user_id}", response_model=CommonResponse)
+@router.get("/{workspace_id}/users/{owner_user_id}/{role}/{invited_user_email}", response_model=CommonResponse)
 async def add_workspace_user(
     workspace_id: str,
     owner_user_id: str,
     role: WorkspaceRole,
-    invited_user_id: str,
+    invited_user_email: str,
     user: UserModel = Depends(current_user)
 ) -> CommonResponse:
-    workspace = await WorkspaceModel.get(workspace_id)
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
     if not workspace:
         raise HTTPException(status_code=404, detail="工作空间不存在")
     owner_user = await UserModel.get(owner_user_id)
     if not owner_user:  
         raise HTTPException(status_code=404, detail="邀请用户不存在")
 
-    invited_user = await UserModel.get(invited_user_id)
+    invited_user = await UserModel.find_one(UserModel.email == invited_user_email)
     if not invited_user:
         raise HTTPException(status_code=404, detail="被邀请用户不存在")
+
+    print(f"owner_user_id: {owner_user_id}, user.id: {user.id}")
     
-    if invited_user_id != user.id:
-        raise HTTPException(status_code=400, detail="邀请用户与当前登陆用户不一致")
+    if owner_user_id != str(user.id):
+        raise HTTPException(status_code=400, detail="管理员用户与当前登陆用户不一致")
 
     if role not in WorkspaceRole:
         raise HTTPException(status_code=400, detail="角色不存在")
@@ -66,7 +68,7 @@ async def remove_workspace_user(
     user_id: str,
     user: UserModel = Depends(current_user)
 ):
-    workspace = await WorkspaceModel.get(workspace_id)
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
     if not workspace:
         raise HTTPException(status_code=404, detail="工作空间不存在")
         
@@ -117,17 +119,3 @@ async def get_my_workspaces(
         total_pages=total_pages,
         items=workspaces
     )
-
-
-@router.delete("/{workspace_id}", response_model=CommonResponse)
-async def delete_workspace(
-    workspace_id: str,
-    user: UserModel = Depends(current_user)
-) -> CommonResponse:
-    workspace = await WorkspaceModel.get(workspace_id)
-    if not workspace:
-        raise HTTPException(status_code=404, detail="工作空间不存在")
-    
-    workspace_core = WorkspaceCore(workspace=workspace)
-    await workspace_core.delete_workspace(user=user)
-    return CommonResponse(message="工作空间已删除")

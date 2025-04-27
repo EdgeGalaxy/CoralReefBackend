@@ -80,9 +80,6 @@ class WorkspaceCore:
         if self.workspace.owner_user.id == user.id:
             raise ValidationError(f'工作空间所有者无法退出工作空间!')
         
-        if user != self.workspace.owner_user:
-            raise ValidationError(f'只有工作空间所有者才能删除用户!')
-            
         result = await WorkspaceUserModel.find_one(
             WorkspaceUserModel.user.id == user.id,
             WorkspaceUserModel.workspace.id == self.workspace.id
