@@ -1,8 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-from reef.models import WorkspaceRole, WorkspaceModel
+from reef.models import WorkspaceRole, WorkspaceModel, WorkspaceUserModel
 
 
 class WorkspaceCreate(BaseModel):
@@ -31,3 +31,17 @@ class WorkspaceResponse(BaseModel):
             created_at=db.created_at,
             updated_at=db.updated_at,
         )
+
+
+class WorkspaceDetailResponse(BaseModel):
+    """工作空间详细信息响应模型"""
+    id: str
+    name: str
+    description: Optional[str] = None
+    max_users: int
+    owner_user_id: str
+    user_count: int
+    current_user_role: str
+    created_at: datetime
+    updated_at: datetime
+

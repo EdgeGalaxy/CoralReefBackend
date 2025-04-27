@@ -1,13 +1,16 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from reef.core.workspaces import WorkspaceCore
 from reef.models import UserModel, WorkspaceModel, WorkspaceRole
-from reef.core.users import current_user
-from reef.schemas import CommonResponse
+from reef.core.users import current_user, super_user
+from reef.schemas import CommonResponse, PaginationResponse
 from reef.schemas.workspaces import (
     WorkspaceCreate,
     WorkspaceResponse,
+    WorkspaceDetailResponse,
 )
+from math import ceil
+
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -76,10 +79,53 @@ async def remove_workspace_user(
     return CommonResponse(message="用户已从工作空间移除")
 
 
-@router.get("/me", response_model=List[WorkspaceResponse])
+@router.get("/me", response_model=PaginationResponse[WorkspaceDetailResponse])
 async def get_my_workspaces(
-    is_admin: bool = False,
+    current_user: UserModel = Depends(current_user),
+    page: Optional[int] = Query(1, description="页码，从1开始", ge=1),
+    page_size: Optional[int] = Query(10, description="每页数量", ge=1, le=100)
+) -> PaginationResponse[WorkspaceDetailResponse]:
+    """获取当前用户的工作空间列表，包含用户数量和角色信息
+    
+    Args:
+        current_user: 当前用户
+        page: 页码，从1开始
+        page_size: 每页数量
+        
+    Returns:
+        PaginationResponse: 分页响应，包含工作空间详细信息列表
+    """
+    # 计算skip和limit
+    skip = (page - 1) * page_size
+    
+    # 获取工作空间列表和总数
+    workspaces, total = await WorkspaceCore.get_user_workspaces(
+        current_user,
+        skip=skip,
+        limit=page_size
+    )
+    
+    # 计算总页数
+    total_pages = ceil(total / page_size)
+    
+    return PaginationResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        items=workspaces
+    )
+
+
+@router.delete("/{workspace_id}", response_model=CommonResponse)
+async def delete_workspace(
+    workspace_id: str,
     user: UserModel = Depends(current_user)
-) -> List[WorkspaceResponse]:
-    workspaces = await WorkspaceCore.get_user_workspaces(user=user, is_admin=is_admin)
-    return [WorkspaceResponse.db_to_schema(w) for w in workspaces]
+) -> CommonResponse:
+    workspace = await WorkspaceModel.get(workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="工作空间不存在")
+    
+    workspace_core = WorkspaceCore(workspace=workspace)
+    await workspace_core.delete_workspace(user=user)
+    return CommonResponse(message="工作空间已删除")
