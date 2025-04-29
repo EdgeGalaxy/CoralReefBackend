@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from reef.core.users import fastapi_users
+from reef.core.users import fastapi_users, auth_backend
 from reef.schemas.users import UserRead, UserUpdate
 
 

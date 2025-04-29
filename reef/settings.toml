@@ -9,6 +9,10 @@ oss_bucket_name = "@format {env[OSS_BUCKET_NAME]}"
 oss_endpoint = "@format {env[OSS_ENDPOINT]}"
 remote_domain = "@format {env[REMOTE_DOMAIN]}"
 
+# GitHub OAuth 配置
+github_client_id = "@format {env[GITHUB_CLIENT_ID]}"
+github_client_secret = "@format {env[GITHUB_CLIENT_SECRET]}"
+
 [default.dynaconf_merge]
 secrets = true  # 启用 .secrets.toml 合并
 
