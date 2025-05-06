@@ -35,8 +35,8 @@ async def create_block_translation(block: BlockTranslationCreate):
 async def list_block_translations(
     page: Optional[int] = Query(None, ge=1, description="页码"),
     page_size: Optional[int] = Query(None, ge=1, le=100, description="每页数量"),
-    sort_by: Optional[str] = Query('sync_at', description="排序字段"),
-    sort_desc: bool = Query(True, description="是否降序"),
+    sort_by: Optional[str] = Query('disabled', description="排序字段"),
+    sort_desc: bool = Query(False, description="是否降序"),
     disabled: Optional[bool] = None
 ):
     """获取区块翻译列表"""
@@ -116,10 +116,13 @@ async def toggle_block_status(block_id: str):
 
 
 @router.get("/describe/all")
-async def get_blocks_describe():
+async def get_blocks_describe(disabled: bool = Query(None, description="是否禁用")):
     """获取区块描述信息，包含翻译后的 schema"""
     # 获取所有区块翻译
-    blocks = await BlockTranslation.find({'disabled': False}).to_list()
+    if disabled is None:
+        blocks = await BlockTranslation.find().to_list()
+    else:
+        blocks = await BlockTranslation.find({'disabled': disabled}).to_list()
     
     # 创建 manifest_type_identifier 到 block_schema 的映射
     identifier_block_mapper = {
