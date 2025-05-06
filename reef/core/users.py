@@ -94,7 +94,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[UserModel, PydanticObjectId])
                 return existing_user
         
         # 创建新用户
-        username = user.email.split("@")[0] if user.email else f"{provider}_{account_id}"
+        username = user.username if user.username else user.email.split("@")[0]
         user_create = UserCreate(
             email=user.email,
             username=username,
