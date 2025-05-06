@@ -104,7 +104,6 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[UserModel, PydanticObjectId])
         )
         new_user = await self.create(
             user_create,
-            safe=True,
         )
         new_user.oauth_accounts.append({
             "id": PydanticObjectId(),

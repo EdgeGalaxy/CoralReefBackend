@@ -58,7 +58,7 @@ async def check_password_reset(
         
     try:
         # 使用用户名作为密码尝试验证
-        is_valid = user_manager.password_helper.hash(user.username) == user.hashed_password
+        is_valid = user_manager.password_helper.password_hash.verify(user.username, user.hashed_password)
         # 如果验证成功，说明密码仍然是用户名，需要重设
         return {"need_reset": is_valid}
     except Exception as e:
