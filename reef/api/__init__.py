@@ -21,8 +21,8 @@ from reef.api.roboflow import router as roboflow_router
 from reef.api.ml_models import router as ml_models_router
 from reef.api.blocks import router as block_router
 
-from reef.core.users import current_user, UserManager, get_user_db
-from reef.core.users import fastapi_users, auth_backend, github_oauth_client
+from reef.core.users import current_user
+from reef.core.users import fastapi_users, auth_backend
 from reef.schemas.users import UserRead, UserCreate
 
 from reef.utlis.monitor import start_gateway_monitor
@@ -77,17 +77,6 @@ noauth_router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
     tags=["auth"],
-)
-# GitHub OAuth支持
-noauth_router.include_router(
-    fastapi_users.get_oauth_router(
-        github_oauth_client,
-        auth_backend,
-        UserRead,
-        UserCreate,
-    ),
-    prefix="/auth/oauth/github",
-    tags=["auth"]
 )
 
 # 代理相关

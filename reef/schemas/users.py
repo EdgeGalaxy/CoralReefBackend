@@ -13,7 +13,6 @@ class UserCreate(schemas.BaseUserCreate):
     username: str
     phone: Optional[str] = ''
 
-
 class UserUpdate(schemas.BaseUserUpdate):
-    username: Optional[str]
-    phone: Optional[str]
+    username: Optional[str] = None
+    phone: Optional[str] = None

@@ -11,10 +11,9 @@ from fastapi_users.authentication import (
     JWTStrategy,
 )
 from fastapi_users.db import BeanieUserDatabase, ObjectIDIDMixin
-from httpx_oauth.clients.github import GitHubOAuth2
 from reef.models.users import UserModel, get_user_db
 from reef.core.workspaces import WorkspaceCore
-from reef.config import settings
+from reef.schemas.users import UserUpdate, UserCreate
 
 SECRET = "SECRET"
 
@@ -30,12 +29,6 @@ auth_backend = AuthenticationBackend(
     name="jwt",
     transport=bearer_transport,
     get_strategy=get_jwt_strategy,
-)
-
-# GitHub OAuth 设置
-github_oauth_client = GitHubOAuth2(
-    client_id=settings.github_client_id,
-    client_secret=settings.github_client_secret,
 )
 
 
@@ -65,64 +58,64 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[UserModel, PydanticObjectId])
         user.last_login_at = datetime.now()
         await user.save()
         
-    async def oauth_callback(
-        self, oauth_name: str, access_token: str, account_id: str, account_email: str, 
-        expires_at: Optional[int] = None, refresh_token: Optional[str] = None,
-        request: Optional[Request] = None, associate_by_email: bool = False,
-        is_verified_by_default: bool = True
-    ) -> UserModel:
+    async def custom_oauth_callback(self, provider: str, account_id: str, user: UserUpdate) -> UserModel:
         """
         处理OAuth回调
         """
         # 首先尝试通过 account_id 查找用户
-        user = await self.user_db.collection.find_one(
-            {f"oauth_accounts.{oauth_name}.account_id": account_id}
+        existing_user = await UserModel.find_one(
+            {f"oauth_accounts.{provider}.account_id": account_id}
         )
         
-        if user:
+        if existing_user:
             # 用户已存在，返回用户
-            return await self.user_db.get(user["_id"])
+            return existing_user
         
         # 尝试通过邮箱查找用户
-        if account_email and associate_by_email:
-            user = await self.user_db.collection.find_one(
-                {"email": account_email}
+        if user.email:
+            existing_user = await UserModel.find_one(
+                {"email": user.email}
             )
-            if user:
+            if existing_user:
                 # 用户已存在但未关联OAuth账号，关联并返回
-                user_obj = await self.user_db.get(user["_id"])
                 # 添加OAuth账号信息
-                if not hasattr(user_obj, "oauth_accounts"):
-                    user_obj.oauth_accounts = []
+                if not hasattr(existing_user, "oauth_accounts"):
+                    existing_user.oauth_accounts = []
                     
-                user_obj.oauth_accounts.append({
-                    "provider": oauth_name,
+                existing_user.oauth_accounts.append({
+                    "id": PydanticObjectId(),
+                    "oauth_name": provider,
                     "account_id": account_id,
-                    "account_email": account_email,
+                    "account_email": user.email,
+                    "access_token": "",
+                    "refresh_token": "",
                 })
-                await user_obj.save()
-                return user_obj
+                await existing_user.save()
+                return existing_user
         
         # 创建新用户
-        username = account_email.split("@")[0] if account_email else f"github_{account_id}"
-        new_user = await self.create(
-            {
-                "email": account_email,
-                "username": username,
-                "is_active": True,
-                "is_verified": is_verified_by_default,  # OAuth用户自动验证
-                "oauth_accounts": [{
-                    "provider": oauth_name,
-                    "account_id": account_id,
-                    "account_email": account_email,
-                }]
-            }
+        username = user.email.split("@")[0] if user.email else f"{provider}_{account_id}"
+        user_create = UserCreate(
+            email=user.email,
+            username=username,
+            password=username,
+            is_active=True,
+            is_verified=True,
         )
-        
-        # 为新用户创建默认工作空间
-        await WorkspaceCore.create_workspace(new_user, {"name": "空间一", "description": "默认空间"})
-        logger.info(f"OAuth用户 {new_user.id} 注册成功, 并创建默认空间")
-        
+        new_user = await self.create(
+            user_create,
+            safe=True,
+        )
+        new_user.oauth_accounts.append({
+            "id": PydanticObjectId(),
+            "oauth_name": provider,
+            "account_id": account_id,
+            "account_email": user.email,
+            "access_token": "",
+            "refresh_token": "",
+        })
+        await new_user.save()
+        logger.info(f"OAuth用户 {new_user.id} 注册成功")
         return new_user
 
 
