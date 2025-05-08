@@ -61,7 +61,7 @@ class WorkflowBase(BaseModel):
         inputs = []
         # Handle list of form data for input type
         form_data = node["data"]["formData"]
-        images = form_data.get("images", [])
+        images = form_data.get("sources", [])
         params = form_data.get("params", [])
             
         for image in images:
@@ -98,6 +98,7 @@ class WorkflowUpdate(WorkflowBase):
 class WorkflowRename(BaseModel):
     name: str
     description: Optional[str] = Field(default=None, description="工作流描述")
+
 
 class WorkflowResponse(WorkflowBase):
     id: str

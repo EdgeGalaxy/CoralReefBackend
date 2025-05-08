@@ -15,6 +15,14 @@ from reef.utlis._utils import _add_params_to_url
 from reef.utlis.cloud import backup_remote_url
 
 
+async def get_roboflow_worflows(workflow_id: str, project_id: str = None, api_key: str = None) -> List[Dict]:
+    roboflow_url = settings.roboflow_api_url
+    project_id = project_id or settings.roboflow_project_id
+    roboflow_api_key = api_key or settings.roboflow_api_key
+    response = await asyncify(requests.get)(f"{roboflow_url}/{project_id}/workflows/{workflow_id}?api_key={roboflow_api_key}")
+    return response.json()['workflow']
+
+
 async def get_roboflow_model_data(model_id: str, endpoint_type: str = None, device_id: str = None, api_key: str = None) -> dict:
     roboflow_url = settings.roboflow_api_url
     roboflow_api_key = api_key or settings.roboflow_api_key

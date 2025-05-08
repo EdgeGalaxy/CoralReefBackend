@@ -5,6 +5,7 @@ from .gateways import GatewayModel, GatewayStatus
 from .cameras import CameraModel, CameraType
 from .workflows import WorkflowModel
 from .deployments import DeploymentModel, OperationStatus
+from .workflow_template import WorkflowTemplateModel
 from .ml_models import (
     MLModelModel, 
     MLPlatform, 
@@ -28,7 +29,8 @@ INIT_MODELS = [
     DeploymentModel,
     WorkspaceModel,
     WorkspaceUserModel,
-    BlockTranslation
+    BlockTranslation,
+    WorkflowTemplateModel
 ]
 
 __all__ = [
@@ -50,5 +52,6 @@ __all__ = [
     "ResizeConfig",
     "AutoOrientConfig",
     "OperationStatus",
+    "WorkflowTemplateModel",
     "INIT_MODELS"
 ]

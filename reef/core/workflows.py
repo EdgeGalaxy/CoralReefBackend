@@ -1,8 +1,10 @@
+import json
+import copy
 from typing import List
 from datetime import datetime
 from loguru import logger
 
-from reef.models import WorkflowModel, WorkspaceModel
+from reef.models import WorkflowModel, WorkspaceModel, UserModel
 from reef.exceptions import ObjectNotFoundError
 
 class WorkflowCore:
@@ -29,11 +31,12 @@ class WorkflowCore:
         ).sort("-created_at").to_list()
 
     @classmethod
-    async def create_workflow(cls, workflow_data: dict, workspace: WorkspaceModel) -> 'WorkflowCore':
+    async def create_workflow(cls, workflow_data: dict, workspace: WorkspaceModel, creator: UserModel) -> 'WorkflowCore':
         """Create a new workflow."""
         workflow = WorkflowModel(
             **workflow_data,
             workspace=workspace,
+            creator=creator,
             created_at=datetime.now(),
             updated_at=datetime.now()
         )

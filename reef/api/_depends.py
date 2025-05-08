@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from reef.models import UserModel
 from reef.core.users import current_user
 
-from reef.models import WorkspaceUserModel, GatewayModel, WorkspaceModel, DeploymentModel, CameraModel, WorkflowModel, GatewayStatus, MLModelModel
+from reef.models import WorkspaceUserModel, GatewayModel, WorkspaceModel, DeploymentModel, CameraModel, WorkflowModel, GatewayStatus, MLModelModel, WorkflowTemplateModel
 
 
 async def check_user_has_workspace_permission(workspace_id: str, user: UserModel = Depends(current_user)):
@@ -77,3 +77,20 @@ async def get_ml_model(model_id: str) -> MLModelModel:
         raise HTTPException(status_code=404, detail="模型不存在")
     
     return model
+
+
+async def get_template_with_user_check(template_id: str, user: UserModel = Depends(current_user)) -> WorkflowTemplateModel:
+    template = await WorkflowTemplateModel.get(template_id, fetch_links=True)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    if template.creator.id != user.id:
+        raise HTTPException(status_code=403, detail="无权访问此模板")
+    return template
+
+
+async def get_template(template_id: str) -> WorkflowTemplateModel:
+    """获取模板"""
+    template = await WorkflowTemplateModel.get(template_id, fetch_links=True)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return template
