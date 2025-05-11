@@ -8,6 +8,7 @@ from reef.schemas.workspaces import (
     WorkspaceCreate,
     WorkspaceResponse,
     WorkspaceDetailResponse,
+    WorkspaceUpdate,
 )
 from math import ceil
 
@@ -119,3 +120,63 @@ async def get_my_workspaces(
         total_pages=total_pages,
         items=workspaces
     )
+
+@router.put("/{workspace_id}", response_model=CommonResponse)
+async def update_workspace(
+    workspace_id: str,
+    workspace_data: WorkspaceUpdate,
+    user: UserModel = Depends(current_user)
+) -> CommonResponse:
+    """更新工作空间信息
+    
+    Args:
+        workspace_id: 工作空间ID
+        workspace_data: 要更新的工作空间数据
+        user: 当前用户
+        
+    Returns:
+        CommonResponse: 操作结果
+    """
+    # 获取工作空间
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="工作空间不存在")
+        
+    # 更新工作空间
+    try:
+        workspace_core = WorkspaceCore(workspace=workspace)
+        await workspace_core.update_workspace(
+            user=user,
+            workspace_data=workspace_data.model_dump()
+        )
+        return CommonResponse(message="工作空间更新成功")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+
+@router.delete("/{workspace_id}", response_model=CommonResponse)
+async def delete_workspace(
+    workspace_id: str,
+    user: UserModel = Depends(current_user)
+) -> CommonResponse:
+    """删除工作空间
+    
+    Args:
+        workspace_id: 工作空间ID
+        user: 当前用户
+        
+    Returns:
+        CommonResponse: 操作结果
+    """
+    # 获取工作空间
+    workspace = await WorkspaceModel.get(workspace_id, fetch_links=True)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="工作空间不存在")
+        
+    # 删除工作空间
+    try:
+        workspace_core = WorkspaceCore(workspace=workspace)
+        await workspace_core.delete_workspace(user=user)
+        return CommonResponse(message="工作空间删除成功")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

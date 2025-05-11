@@ -11,6 +11,13 @@ class WorkspaceCreate(BaseModel):
     max_users: int = 10
 
 
+class WorkspaceUpdate(BaseModel):
+    """工作空间更新请求模型"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    max_users: Optional[int] = None
+
+
 class WorkspaceResponse(BaseModel):
     id: str
     name: str

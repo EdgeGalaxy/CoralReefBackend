@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
-from CoralReefBackend.reef.models.workspaces import WorkspaceModel
+from reef.models.workspaces import WorkspaceModel
 from reef.core.workflow_template import WorkflowTemplate
 from reef.schemas import CommonResponse, PaginationResponse, PaginationParams
 from reef.schemas.workflow_template import (

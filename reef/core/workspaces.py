@@ -6,7 +6,8 @@ from reef.models import (
     UserModel,
     WorkspaceModel,
     WorkspaceUserModel,
-    WorkspaceRole
+    WorkspaceRole,
+    GatewayModel
 )
 from reef.schemas.workspaces import WorkspaceDetailResponse, WorkspaceUsers
 from reef.exceptions import ValidationError
@@ -155,3 +156,66 @@ class WorkspaceCore:
             result.append(row)
             
         return result, total
+
+    async def update_workspace(self, user: UserModel, workspace_data: dict) -> None:
+        """Update workspace information
+        
+        Args:
+            user: User model requesting the update
+            workspace_data: Dict containing workspace data to update
+        
+        Raises:
+            ValidationError: If user is not the workspace owner
+        """
+        # 验证用户是否为工作空间所有者
+        if str(self.workspace.owner_user.id) != str(user.id):
+            raise ValidationError("只有工作空间所有者才能更新工作空间信息")
+        
+        # 更新允许的字段
+        allowed_fields = ["name", "description", "max_users"]
+        update_data = {k: v for k, v in workspace_data.items() if k in allowed_fields}
+        
+        # 添加更新时间
+        update_data["updated_at"] = datetime.now()
+        
+        # 更新工作空间
+        await self.workspace.update({"$set": update_data})
+        logger.info(f"用户 {user.id} 更新工作空间 {self.workspace.id}")
+    
+    async def delete_workspace(self, user: UserModel) -> None:
+        """Delete workspace if no gateways are associated with it
+        
+        Args:
+            user: User model requesting the deletion
+            
+        Raises:
+            ValidationError: If user is not the workspace owner or if gateways exist
+        """
+        # 验证用户是否为工作空间所有者
+        if str(self.workspace.owner_user.id) != str(user.id):
+            raise ValidationError("只有工作空间所有者才能删除工作空间")
+        
+        # 检查是否存在关联的网关
+        gateways_count = await GatewayModel.find(
+            GatewayModel.workspace.id == self.workspace.id
+        ).count()
+        
+        if gateways_count > 0:
+            raise ValidationError("工作空间存在关联的网关，无法删除")
+
+        # 检查是否是用户的唯一工作空间
+        user_workspaces_count = await WorkspaceUserModel.find(
+            WorkspaceUserModel.user.id == user.id
+        ).count()
+        
+        if user_workspaces_count <= 1:
+            raise ValidationError("不能删除用户的唯一工作空间")
+        
+        # 删除所有工作空间用户关联
+        await WorkspaceUserModel.find(
+            WorkspaceUserModel.workspace.id == self.workspace.id
+        ).delete()
+        
+        # 删除工作空间
+        await self.workspace.delete()
+        logger.info(f"用户 {user.id} 删除工作空间 {self.workspace.id}")
