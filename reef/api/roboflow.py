@@ -11,7 +11,6 @@ router = APIRouter(tags=["roboflow"])
 
 @router.get("/ort/{model_id}", response_model=RoboflowMLModel)
 async def get_roboflow_model(
-    endpoint_type: str,
     model_id: str,
     api_key: Optional[str] = Query(None, description="Roboflow API密钥"),
     nocache: Optional[str] = Query(True, description="是否缓存"),
@@ -38,7 +37,6 @@ async def get_roboflow_model(
 
 @router.get("/ort/{dateset_type}/{version}", response_model=RoboflowMLModelResponse)
 async def get_roboflow_model_by_dateset_type_and_version(
-    endpoint_type: str,
     dateset_type: str,
     version: str,
     api_key: Optional[str] = Query(None, description="Roboflow API密钥"),
