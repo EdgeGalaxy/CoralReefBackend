@@ -39,12 +39,13 @@ class WorkflowTemplate:
         roboflow_workflows = await get_roboflow_worflows(workflow_id, project_id, api_key)
         logger.info(f'从Roboflow同步工作流: {project_id}/{workflow_id}')
         
-        specification = json.loads(roboflow_workflows["config"])
+        specification = json.loads(roboflow_workflows["config"])['specification']
+        print(f'specification: {specification}')
         template = WorkflowTemplateModel(
             name=roboflow_workflows["name"],
             description=roboflow_workflows.get("description", ""),
             specification=specification,
-            data=cls.specification_to_workflow_data(specification),
+            data=await cls.specification_to_workflow_data(WorkflowSpecification(**specification)),
             is_public=False,
             creator=creator,
             roboflow_id=f"{project_id}/{workflow_id}",
@@ -73,6 +74,8 @@ class WorkflowTemplate:
             step_node["id"] = f"{step['type']}-{i}"
             step_node["position"] = {"x": 160 + i * 200, "y": 120}
             step_node["data"]["block_schema"]["properties"] = step
+            step_node["data"]["manifest_type_identifier"] = step['type']
+            step_node["data"]["human_friendly_block_name"] = f"{step['type']}-{i}"
             step_node["data"]["formData"] = step
             step_node["data"]["label"] = step["name"]
             nodes.append(step_node)
@@ -98,7 +101,7 @@ class WorkflowTemplate:
         output_node = copy.deepcopy(OUTPUT_NODE_TEMPLATE)
         output_node["data"]["formData"]["params"] = [{
             "name": output["name"],
-            "value": output["selector"]
+            "selector": output["selector"]
         } for output in specification.outputs]
         nodes.append(output_node)
         
@@ -151,14 +154,11 @@ class WorkflowTemplate:
         sort_desc: bool = True
     ) -> PaginationResponse[TemplateResponse]:
         """获取模板列表"""
-        query = {}
+        find_query = WorkflowTemplateModel.find(fetch_links=True)
         if is_public is not None:
-            query["is_public"] = is_public
+            find_query = WorkflowTemplateModel.find(WorkflowTemplateModel.is_public == is_public, fetch_links=True)
         if creator:
-            query["creator.id"] = creator.id
-            
-        # 构建查询
-        find_query = WorkflowTemplateModel.find(query)
+            find_query = find_query.find(WorkflowTemplateModel.creator.id == creator.id, fetch_links=True)
         
         # 计算总记录数
         total = await find_query.count()
@@ -224,7 +224,7 @@ class WorkflowTemplate:
             specification=self.template.specification,
             data=self.template.data,
             workspace=target_workspace,
-            creator=target_workspace.owner,
+            creator=target_workspace.owner_user,
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
