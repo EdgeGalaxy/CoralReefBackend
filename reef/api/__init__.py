@@ -45,6 +45,7 @@ app = FastAPI(
     description="Coral Reef API",
     version="0.1.0",
     lifespan=lifespan,
+    ignore_trailing_slash=True
 )
 
 
