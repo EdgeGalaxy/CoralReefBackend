@@ -9,7 +9,7 @@ from reef.utlis.cloud import sign_url
 router = APIRouter(tags=["roboflow"])
 
 
-@router.get("/{endpoint_type}/{model_id}", response_model=RoboflowMLModel)
+@router.get("/ort/{model_id}", response_model=RoboflowMLModel)
 async def get_roboflow_model(
     endpoint_type: str,
     model_id: str,
@@ -36,7 +36,7 @@ async def get_roboflow_model(
     return data
 
 
-@router.get("/{endpoint_type}/{dateset_type}/{version}", response_model=RoboflowMLModelResponse)
+@router.get("/ort/{dateset_type}/{version}", response_model=RoboflowMLModelResponse)
 async def get_roboflow_model_by_dateset_type_and_version(
     endpoint_type: str,
     dateset_type: str,
