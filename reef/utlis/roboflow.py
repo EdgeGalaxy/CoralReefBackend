@@ -80,3 +80,11 @@ async def get_base_blocks_describe() -> Dict:
             data = json.load(f)
         url_cache.set("base_blocks_describe", expires, data)
     return data
+
+
+async def get_block_by_identifier(identifier: str) -> Dict:
+    data = await get_base_blocks_describe()
+    for block in data['blocks']:
+        if block['manifest_type_identifier'] == identifier:
+            return block
+    return None

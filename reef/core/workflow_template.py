@@ -11,6 +11,7 @@ from reef.schemas.workflows import WorkflowSpecification
 from reef.schemas import PaginationResponse, PaginationParams
 from reef.schemas.workflow_template import TemplateResponse
 from reef.templates.workflow_nodes import INPUT_NODE_TEMPLATE, STEP_NODE_TEMPLATE, OUTPUT_NODE_TEMPLATE
+from reef.utlis.roboflow import get_block_by_identifier
 
 class WorkflowTemplate:
     def __init__(
@@ -65,19 +66,17 @@ class WorkflowTemplate:
         
         # 添加输入节点
         input_node = copy.deepcopy(INPUT_NODE_TEMPLATE)
-        input_node["data"]["formData"]["sources"] = [{"name": input["name"]} for input in specification.inputs]
+        input_node["data"]["formData"]["sources"] = [{"name": "image"}]
+        input_node["data"]["formData"]["params"] = [{"name": step['name'], "value": step['default_value']} for step in specification.inputs if step['type'] == 'WorkflowParameter']
         nodes.append(input_node)
         
         # 添加处理步骤节点
         for i, step in enumerate(specification.steps):
             step_node = copy.deepcopy(STEP_NODE_TEMPLATE)
             step_node["id"] = f"{step['type']}-{i}"
-            step_node["position"] = {"x": 160 + i * 200, "y": 120}
-            step_node["data"]["block_schema"]["properties"] = step
-            step_node["data"]["manifest_type_identifier"] = step['type']
-            step_node["data"]["human_friendly_block_name"] = f"{step['type']}-{i}"
+            step_node["position"] = {"x": 160 + i * 200, "y": 120 + i * 100}
+            step_node["data"] = await get_block_by_identifier(step['type'])
             step_node["data"]["formData"] = step
-            step_node["data"]["label"] = step["name"]
             nodes.append(step_node)
             
             # 添加边
