@@ -100,7 +100,8 @@ class WorkflowTemplate:
         output_node = copy.deepcopy(OUTPUT_NODE_TEMPLATE)
         output_node["data"]["formData"]["params"] = [{
             "name": output["name"],
-            "selector": output["selector"]
+            "selector": output["selector"],
+            "value": output["selector"]
         } for output in specification.outputs]
         nodes.append(output_node)
         
