@@ -28,7 +28,9 @@ class ProxyCore:
             elif "usage/plan" in self.url:
                 return await self.handle_usage_plan(data)
             else:
-                return await self.handle_redirect(data)
+                logger.warning(f"解析请求 [redirect] ->: {self.url} 不支持 {data} ")
+                return {"status": "success"}
+                # return await self.handle_redirect(data)
         except Exception as e:
             logger.exception(f"{self.url} 解析请求失败: {e}, data: {data}")
 
@@ -87,11 +89,6 @@ class ProxyCore:
             )
             logger.info(f"新建网关 {gateway.gateway.id} 成功")
 
-        # if gateway.status == GatewayStatus.DELETED:
-        #     gateway.status = GatewayStatus.ONLINE
-        #     gateway.last_heartbeat = datetime.now()
-        #     await gateway.save()
-        
         gateway_core = GatewayCore(gateway=gateway)
 
         gateway_data = {
