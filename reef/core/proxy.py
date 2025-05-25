@@ -36,6 +36,9 @@ class ProxyCore:
 
     async def handle_pingpack(self, data: Dict):
         logger.debug(f"解析请求 [pingpack] ->: {data}")
+        if not data:
+            logger.warning(f"pingpack 数据为空: {data}")
+            return {"status": "success"}
 
         pingpack_data = PingpackData(**data)
         # 前置校验
