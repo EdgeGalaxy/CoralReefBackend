@@ -29,8 +29,8 @@ class ProxyCore:
                 return await self.handle_usage_plan(data)
             else:
                 logger.warning(f"解析请求 [redirect] ->: {self.url} 不支持 {data} ")
-                return {"status": "success"}
-                # return await self.handle_redirect(data)
+                # return {"status": "success"}
+                return await self.handle_redirect(data)
         except Exception as e:
             logger.exception(f"{self.url} 解析请求失败: {e}, data: {data}")
 
@@ -101,7 +101,7 @@ class ProxyCore:
             "version": pingpack_data.inference_server_version,
             "last_heartbeat": datetime.now()
         }
-        logger.info(f"更新网关 {gateway.gateway.id} 状态为 {GatewayStatus.ONLINE}")
+        logger.info(f"更新网关 {gateway.id} 状态为 {GatewayStatus.ONLINE}")
         await gateway_core.update_gateway(gateway_data=gateway_data)
 
     async def handle_inference_usage(self, data: Dict):
