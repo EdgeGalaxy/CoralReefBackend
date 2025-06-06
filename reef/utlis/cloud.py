@@ -35,7 +35,7 @@ async def sign_url(key: str, expires: int = 3600) -> str:
 
 
 async def backup_remote_url(key: str, url: str) -> str:
-    response = await asyncify(requests.get)(url)
+    response = await asyncify(requests.get)(url, timeout=60)
     if response.status_code != 200:
         raise RemoteCallError(f"Roboflow API返回错误: {response.status_code} {response.text}")
     bucket = get_bucket()

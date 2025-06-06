@@ -19,7 +19,7 @@ async def get_roboflow_worflows(workflow_id: str, project_id: str = None, api_ke
     roboflow_url = settings.roboflow_api_url
     project_id = project_id or settings.roboflow_project_id
     roboflow_api_key = api_key or settings.roboflow_api_key
-    response = await asyncify(requests.get)(f"{roboflow_url}/{project_id}/workflows/{workflow_id}?api_key={roboflow_api_key}")
+    response = await asyncify(requests.get)(f"{roboflow_url}/{project_id}/workflows/{workflow_id}?api_key={roboflow_api_key}", timeout=60)
     return response.json()['workflow']
 
 
@@ -40,7 +40,7 @@ async def get_roboflow_model_data(model_id: str, endpoint_type: str = None, devi
         params.append(("api_key", api_key))
     try:
         api_url = _add_params_to_url(f"{roboflow_url}/{endpoint_type}/{model_alias}", params)
-        response = await asyncify(requests.get)(api_url)
+        response = await asyncify(requests.get)(api_url, timeout=90)
         if response.status_code != 200:
             raise RemoteCallError(f"Roboflow API返回错误: {response.status_code} {response.text}")
         api_data = response.json()
