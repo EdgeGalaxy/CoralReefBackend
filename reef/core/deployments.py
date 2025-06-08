@@ -1,5 +1,6 @@
 import asyncio
 from typing import List, Dict, Any, Optional
+import hashlib
 
 from loguru import logger
 
@@ -53,6 +54,20 @@ class DeploymentCore:
         deployments = await cls.get_workspace_deployments(workspace)
         await asyncio.gather(*[deployment.fetch_recent_running_status() for deployment in deployments])
 
+    @staticmethod
+    def _calc_cameras_md5(cameras: List[CameraModel]):
+        """根据摄像头的 type 和 path 计算 cameras_md5"""
+        md5_list = []
+        for camera in cameras:
+            # 支持 Link 类型和 CameraModel 实例
+            cam_type = camera.type
+            cam_path = camera.path
+            s = f"{cam_type}:{cam_path}"
+            md5_list.append(hashlib.md5(s.encode('utf-8')).hexdigest())
+        # 汇总所有 camera 的 md5，再整体算 md5
+        all_md5 = ''.join(sorted(md5_list))
+        return hashlib.md5(all_md5.encode('utf-8')).hexdigest() if md5_list else None
+
     @classmethod
     async def create_deployment(
         cls,
@@ -76,7 +91,9 @@ class DeploymentCore:
             workflow=workflow,
             parameters=parameters,
             workspace=workspace,
-            running_status=OperationStatus.PENDING
+            running_status=OperationStatus.PENDING,
+            workflow_md5=workflow.specification_md5,
+            cameras_md5=cls._calc_cameras_md5(cameras)
         )
         await deployment.insert()
         logger.info(f"Created deployment: {deployment.id}")
@@ -90,12 +107,33 @@ class DeploymentCore:
         if cameras:
             await validate_cameras(cameras, self.deployment.gateway)
             self.deployment.cameras = cameras
+            # 更新 cameras_md5
+            self.deployment.cameras_md5 = self._calc_cameras_md5(self.deployment.cameras)
 
         for key, value in update_data.items():
             setattr(self.deployment, key, value)
         
-        await self.deployment.save()
+        await self.deployment.trigger_update()
         logger.info(f"Updated deployment: {self.deployment.id}")
+
+
+    async def compare_config(self) -> dict:
+        """
+        比较当前 deployment 的 workflow_md5 和 cameras_md5 是否与最新 workflow/cameras 的 md5 一致
+        """
+        # 获取最新 workflow md5
+        workflow_md5 = self.deployment.workflow.specification_md5
+        workflow_changed = (self.deployment.workflow_md5 != workflow_md5)
+
+        # 计算最新 cameras md5
+        cameras = self.deployment.cameras
+        cameras_md5 = self._calc_cameras_md5(cameras)
+        cameras_changed = (self.deployment.cameras_md5 != cameras_md5)
+
+        return {
+            'workflow_changed': workflow_changed,
+            'cameras_changed': cameras_changed
+        }
 
     async def delete_deployment(self) -> None:
         """Delete deployment"""
@@ -124,3 +162,20 @@ class DeploymentCore:
         """Resume pipeline"""
         await self.check_deployment()
         return await self.deployment.resume_pipeline()
+
+    async def restart_pipeline(self) -> tuple[bool, str]:
+        """Restart pipeline with latest configuration"""
+        await self.check_deployment()
+        diff_result = await self.compare_config()
+        if not diff_result['workflow_changed'] and not diff_result['cameras_changed']:
+            return True, "无需更新"
+        
+        # 更新 md5
+        self.deployment.workflow_md5 = self.deployment.workflow.specification_md5
+        self.deployment.cameras_md5 = self._calc_cameras_md5(self.deployment.cameras)
+        
+        # 手动触发更新
+        await self.deployment.trigger_update()
+        
+        logger.info(f"Restarted pipeline for deployment: {self.deployment.id}")
+        return True, "更新成功"

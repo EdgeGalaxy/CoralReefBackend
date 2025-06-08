@@ -7,6 +7,7 @@ oss_access_key_id = "@format {env[OSS_ACCESS_KEY_ID]}"
 oss_access_key_secret = "@format {env[OSS_ACCESS_KEY_SECRET]}"
 oss_bucket_name = "@format {env[OSS_BUCKET_NAME]}"
 oss_endpoint = "@format {env[OSS_ENDPOINT]}"
+oss_reef_dir = "@format {env[OSS_REEF_DIR]}"
 remote_domain = "@format {env[REMOTE_DOMAIN]}"
 
 # GitHub OAuth 配置

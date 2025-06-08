@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+from loguru import logger
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import FastAPI, Depends, APIRouter, Request, Query, HTTPException
@@ -26,7 +27,7 @@ from reef.core.users import current_user
 from reef.core.users import fastapi_users, auth_backend
 from reef.schemas.users import UserRead, UserCreate
 
-from reef.utlis.monitor import start_gateway_monitor
+from reef.utlis.monitor import start_monitor
 
 from reef.config import settings
 from reef.exceptions import ModelException
@@ -36,7 +37,7 @@ from reef.exceptions import ModelException
 async def lifespan(app: FastAPI):
     client = AsyncIOMotorClient(settings.mongo_uri)
     await init_beanie(database=client.get_default_database(), document_models=INIT_MODELS)
-    await start_gateway_monitor()
+    await start_monitor()
     yield
 
 
@@ -91,6 +92,7 @@ app.include_router(auth_router, prefix="/api/reef")
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
+    logger.exception(f'http exception: {exc}')
     return JSONResponse(
         status_code=exc.status_code,
         content={"message": str(exc.detail)}
@@ -112,6 +114,7 @@ async def model_exception_handler(request, exc):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
+    logger.exception(f"General exception: {exc}")
     return JSONResponse(
         status_code=500,
         content={"message": "Internal server error"}

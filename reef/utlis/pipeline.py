@@ -1,9 +1,11 @@
 from enum import Enum
 from typing import List, Dict, Any, Union
 
+import requests
 from asyncer import asyncify
 from loguru import logger
 from inference_sdk import InferenceHTTPClient
+from inference_sdk.http.utils.requests import api_key_safe_raise_for_status
 
 from reef.config import settings
 
@@ -40,22 +42,25 @@ class PipelineClient:
     async def pause_pipeline(self, pipeline_id: str) -> bool:
         if pipeline_id in await self.pipeline_ids:
             response = await asyncify(self.client.pause_inference_pipeline)(pipeline_id=pipeline_id) 
-            return response['status'] == RemotePipelineStatus.SUCCESS
+            state = response['status'] == RemotePipelineStatus.SUCCESS
+            return state
         raise False
     
     async def resume_pipeline(self, pipeline_id: str) -> bool:
         if pipeline_id in await self.pipeline_ids:
             response = await asyncify(self.client.resume_inference_pipeline)(pipeline_id=pipeline_id) 
-            return response['status'] == RemotePipelineStatus.SUCCESS
+            print(f'resume response: {response}')
+            state = response['status'] == RemotePipelineStatus.SUCCESS
+            return state
         raise False
-
+    
     async def terminate_pipeline(self, pipeline_id: str) -> None:
         if pipeline_id in await self.pipeline_ids:
             await asyncify(self.client.terminate_inference_pipeline)(pipeline_id=pipeline_id)
 
     async def get_pipeline_metrics(self, pipeline_id: str) -> str:
         if pipeline_id not in await self.pipeline_ids:
-            return {"status": "timeout", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
+            return {"status": "not_found", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
         
         response = await asyncify(self.client.get_inference_pipeline_status)(pipeline_id=pipeline_id)
         return response

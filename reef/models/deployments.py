@@ -5,6 +5,8 @@ from typing import List, Dict, Any, Optional
 from pydantic import Field
 from beanie import Document, Link, before_event, Replace, Insert, Delete
 
+from inference_sdk.http.errors import HTTPCallErrorError
+
 import requests
 from loguru import logger
 
@@ -20,12 +22,13 @@ from .workflows import WorkflowModel
 class OperationStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
-    SUCCESS = "success"
+    WARNING = "warning"
     FAILURE = "failure"
+    MUTED = "muted"
+    # PAUSED = "paused"
     STOPPED = "stopped"
+    NOT_FOUND = "not_found"
     TIMEOUT = "timeout"
-
-
 
 class DeploymentModel(Document):
     name: str = Field(description="部署名称")
@@ -33,13 +36,14 @@ class DeploymentModel(Document):
     gateway: Link[GatewayModel] = Field(description="网关")
     cameras: List[Link[CameraModel]] = Field(description="摄像头")
     workflow: Link[WorkflowModel] = Field(description="工作流")
+    workflow_md5: Optional[str] = Field(default=None, description="workflow specification 的 md5")
+    cameras_md5: Optional[str] = Field(default=None, description="cameras 列表的 md5")
     pipeline_id: Optional[str] = Field(default=None, description="pipeline id")
-    running_status: OperationStatus = Field(default=OperationStatus.FAILURE, description="运行状态")
+    running_status: OperationStatus = Field(default=OperationStatus.PENDING, description="运行状态")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="部署参数")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     workspace: Link[WorkspaceModel] = Field(description="所属工作空间")
-
     class Settings:
         name = "deployments"
     
@@ -88,17 +92,18 @@ class DeploymentModel(Document):
             logger.error(f"Failed to create pipeline: {e}")
             raise RemoteCallError(f"远程创建推理管道失败")
 
-    @before_event([Replace])
     async def handle_pipeline_update(self, old_document: "DeploymentModel"):
         """Handle pipeline updates when deployment is updated"""
         try:
             pipeline_client = PipelineClient(self.gateway.get_api_url())
             
             needs_restart = (
-                self.cameras != old_document.cameras or
-                self.workflow != old_document.workflow or
-                self.gateway != old_document.gateway or
-                self.parameters != old_document.parameters
+                [camera.id for camera in self.cameras] != [camera.id for camera in old_document.cameras] or
+                self.workflow.id != old_document.workflow.id or
+                self.gateway.id != old_document.gateway.id or
+                self.parameters != old_document.parameters or
+                self.workflow_md5 != old_document.workflow_md5 or
+                self.cameras_md5 != old_document.cameras_md5
             )
             
             if needs_restart:
@@ -106,7 +111,7 @@ class DeploymentModel(Document):
                     await pipeline_client.terminate_pipeline(old_document.pipeline_id)
                 
                 self.pipeline_id = await pipeline_client.create_pipeline(
-                    video_reference=[camera.path for camera in self.cameras],
+                    video_reference=await self._fetch_video_reference(),
                     workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                     workspace_name=self.workspace.name
                 )
@@ -115,6 +120,12 @@ class DeploymentModel(Document):
         except Exception as e:
             logger.error(f"Failed to update pipeline: {e}")
             raise RemoteCallError(f"远程更新推理管道失败")
+
+    async def trigger_update(self):
+        """Trigger pipeline update manually"""
+        old_document = await DeploymentModel.get(self.id, fetch_links=True)
+        await self.handle_pipeline_update(old_document)
+        await self.save()
 
     @before_event([Delete])
     async def cleanup_pipeline(self):
@@ -135,6 +146,28 @@ class DeploymentModel(Document):
         if not self.created_at:
             self.created_at = datetime.now()
 
+    async def get_status(self, status: str, report: Dict[str, Any]) -> OperationStatus:
+        """Get status"""
+        if status == "failure":
+            running_status = OperationStatus.FAILURE
+        if status == "not_found":
+            running_status = OperationStatus.NOT_FOUND
+        if status == "success":
+            if not report:
+                running_status = OperationStatus.PENDING
+            sources_metadata = report['sources_metadata']
+
+            source_status = [source_metadata['state'] for source_metadata in sources_metadata]
+            if all([source_status == "RUNNING" for source_status in source_status]):
+                running_status = OperationStatus.RUNNING
+            # elif all([source_status == "PAUSED" for source_status in source_status]):
+            #     running_status = OperationStatus.PAUSED
+            elif all([source_status == "MUTED" for source_status in source_status]):
+                running_status = OperationStatus.MUTED
+            else:
+                running_status = OperationStatus.WARNING
+        return running_status
+
     async def fetch_recent_running_status(self) -> OperationStatus:
         """Fetch recent status from inference service"""
         from .metrics import PipelineMetricTimeSeries
@@ -145,11 +178,7 @@ class DeploymentModel(Document):
             status = metrics['status']
             report = metrics['report']
             
-            self.running_status = (
-                OperationStatus.RUNNING if status == "success"
-                else OperationStatus.STOPPED if status == "stopped"
-                else OperationStatus.FAILURE
-            )
+            self.running_status = await self.get_status(status, report)
             # async register metrics
             asyncio.create_task(PipelineMetricTimeSeries.register_metrics(self, report))
             await self.save()
@@ -159,8 +188,13 @@ class DeploymentModel(Document):
             self.running_status = OperationStatus.TIMEOUT
             await self.save()
             return self.running_status
+        except HTTPCallErrorError as e:
+            error_status = e.status_code
+            self.running_status = OperationStatus.NOT_FOUND if error_status == 404 else OperationStatus.FAILURE
+            await self.save()
+            return self.running_status
         except Exception as e:
-            logger.error(f"Failed to update deployment status: {e}")
+            logger.exception(f"Failed to update deployment status: {e}")
             raise RemoteCallError(f"远程更新部署状态失败")
 
     async def get_pipeline_results(self, exclude_fields: List[str] = None) -> List[Dict[str, Any]]:
@@ -181,8 +215,9 @@ class DeploymentModel(Document):
         pipeline_client = PipelineClient(self.gateway.get_api_url())
         success = await pipeline_client.pause_pipeline(self.pipeline_id)
         if success:
-            self.running_status = OperationStatus.STOPPED
+            self.running_status = OperationStatus.MUTED
             await self.save()
+            return success
         raise RemoteCallError(f"远程暂停推理管道失败")
 
     async def resume_pipeline(self) -> bool:
@@ -192,4 +227,5 @@ class DeploymentModel(Document):
         if success:
             self.running_status = OperationStatus.RUNNING
             await self.save()
+            return success
         raise RemoteCallError(f"远程恢复推理管道失败")

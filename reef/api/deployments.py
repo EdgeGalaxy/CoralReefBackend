@@ -1,17 +1,19 @@
 import asyncio
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from reef.core.deployments import DeploymentCore
 from reef.models import (
     WorkspaceModel, 
     DeploymentModel,
+    WorkflowModel,
 )
 from reef.schemas import CommonResponse
 from reef.schemas.deployments import (
     DeploymentCreate,
     DeploymentResponse,
-    DeploymentUpdate
+    DeploymentUpdate,
+    DeploymentDiffResponse
 )
 from reef.api._depends import (
     check_user_has_workspace_permission,
@@ -110,3 +112,26 @@ async def resume_deployment(
     deployment_core = DeploymentCore(deployment=deployment)
     status = await deployment_core.resume_pipeline()
     return CommonResponse(message="恢复成功" if status else "恢复失败")
+
+
+@router.post("/{deployment_id}/restart")
+async def restart_deployment(
+    deployment: DeploymentModel = Depends(get_deployment),
+) -> CommonResponse:
+    """
+    重启部署的 pipeline，使用最新的 workflow 和 cameras 配置
+    """
+    deployment_core = DeploymentCore(deployment=deployment)
+    _, message = await deployment_core.restart_pipeline()
+    return CommonResponse(message=message)
+
+
+@router.get("/{deployment_id}/compare", response_model=DeploymentDiffResponse)
+async def compare_deployment_config(
+    deployment: DeploymentModel = Depends(get_deployment),
+) -> DeploymentDiffResponse:
+    """
+    比较 deployment 当前 workflow/cameras md5 与最新 workflow/cameras md5 是否一致
+    """
+    deployment_core = DeploymentCore(deployment=deployment)
+    return await deployment_core.compare_config()

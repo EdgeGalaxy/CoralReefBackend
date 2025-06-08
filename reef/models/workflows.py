@@ -13,6 +13,7 @@ class WorkflowModel(Document):
     roboflow_id: Optional[str] = Field(default=None, description="Roboflow ID")
     data: Optional[Dict[str, Any]] = Field(default=None, description="工作流数据")
     specification: Dict[str, Any] = Field(description="工作流定义")
+    specification_md5: Optional[str] = Field(default=None, description="specification 的 md5")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     workspace: Link[WorkspaceModel] = Field(description="所属工作空间")

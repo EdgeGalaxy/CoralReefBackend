@@ -60,3 +60,7 @@ class DeploymentResponse(DeploymentBase):
             created_at=db.created_at,
             updated_at=db.updated_at
         )
+
+class DeploymentDiffResponse(BaseModel):
+    workflow_changed: bool
+    cameras_changed: bool
