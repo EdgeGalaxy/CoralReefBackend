@@ -13,7 +13,9 @@ from reef.schemas.deployments import (
     DeploymentCreate,
     DeploymentResponse,
     DeploymentUpdate,
-    DeploymentDiffResponse
+    DeploymentDiffResponse,
+    DeploymentOfferRequest,
+    WebRTCOffer
 )
 from reef.api._depends import (
     check_user_has_workspace_permission,
@@ -135,3 +137,12 @@ async def compare_deployment_config(
     """
     deployment_core = DeploymentCore(deployment=deployment)
     return await deployment_core.compare_config()
+
+
+@router.post("/{deployment_id}/offer", response_model=WebRTCOffer)
+async def offer_deployment(
+    offer_request: DeploymentOfferRequest,
+    deployment: DeploymentModel = Depends(get_deployment),
+) -> WebRTCOffer:
+    deployment_core = DeploymentCore(deployment=deployment)
+    return await deployment_core.offer_pipeline(offer_request.model_dump())

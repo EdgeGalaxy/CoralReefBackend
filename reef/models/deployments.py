@@ -219,6 +219,15 @@ class DeploymentModel(Document):
             await self.save()
             return success
         raise RemoteCallError(f"远程暂停推理管道失败")
+    
+    async def offer_pipeline(self, offer_request: Dict[str, Any]) -> bool:
+        """Offer pipeline"""
+        pipeline_client = PipelineClient(self.gateway.get_api_url())
+        response = await pipeline_client.offer_pipeline(self.pipeline_id, offer_request)
+        if response["status"] == "success":
+            return {"sdp": response['sdp'], 'type': response['type']}
+
+        raise RemoteCallError(f"远程视频流推理管道失败")
 
     async def resume_pipeline(self) -> bool:
         """Resume pipeline"""

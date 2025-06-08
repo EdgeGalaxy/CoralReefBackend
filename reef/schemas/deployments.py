@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from reef.models.deployments import OperationStatus, DeploymentModel
 
@@ -64,3 +64,25 @@ class DeploymentResponse(DeploymentBase):
 class DeploymentDiffResponse(BaseModel):
     workflow_changed: bool
     cameras_changed: bool
+
+
+class WebRTCOffer(BaseModel):
+    type: str
+    sdp: str
+
+class WebRTCTURNConfig(BaseModel):
+    urls: str
+    username: str
+    credential: str
+
+class DeploymentOfferRequest(BaseModel):
+    webrtc_offer: WebRTCOffer
+    webrtc_turn_config: Optional[WebRTCTURNConfig] = None
+    stream_output: Optional[List[Optional[str]]] = Field(default_factory=list)
+    data_output: Optional[List[Optional[str]]] = Field(default_factory=list)
+    webrtc_peer_timeout: float = 1
+    webcam_fps: Optional[float] = 30
+    processing_timeout: float = 0.1
+    fps_probe_frames: int = 10
+    max_consecutive_timeouts: int = 30
+    min_consecutive_on_time: int = 5

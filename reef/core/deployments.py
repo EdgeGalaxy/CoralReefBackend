@@ -116,7 +116,6 @@ class DeploymentCore:
         await self.deployment.trigger_update()
         logger.info(f"Updated deployment: {self.deployment.id}")
 
-
     async def compare_config(self) -> dict:
         """
         比较当前 deployment 的 workflow_md5 和 cameras_md5 是否与最新 workflow/cameras 的 md5 一致
@@ -162,6 +161,11 @@ class DeploymentCore:
         """Resume pipeline"""
         await self.check_deployment()
         return await self.deployment.resume_pipeline()
+    
+    async def offer_pipeline(self, offer_request: Dict[str, Any]) -> bool:
+        """Offer pipeline"""
+        await self.check_deployment()
+        return await self.deployment.offer_pipeline(offer_request)
 
     async def restart_pipeline(self) -> tuple[bool, str]:
         """Restart pipeline with latest configuration"""

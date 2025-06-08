@@ -18,6 +18,8 @@ class PipelineClient:
     def __init__(self, api_url: str, api_key: str = None):
         if api_key is None:
             api_key = settings.roboflow_api_key
+        self.api_url = api_url
+        self.api_key = api_key
         self.client = InferenceHTTPClient(api_url=api_url, api_key=api_key)
 
     @property
@@ -57,6 +59,18 @@ class PipelineClient:
     async def terminate_pipeline(self, pipeline_id: str) -> None:
         if pipeline_id in await self.pipeline_ids:
             await asyncify(self.client.terminate_inference_pipeline)(pipeline_id=pipeline_id)
+    
+    async def offer_pipeline(self, pipeline_id: str, offer_request: Dict[str, Any]) -> None:
+        def offer_inference_pipeline(pipeline_id: str, offer_request: Dict[str, Any], api_key: str) -> None:
+            response = requests.post(
+                f"{self.api_url}/inference_pipelines/{pipeline_id}/offer",
+                json={"api_key": api_key, **offer_request}
+            )
+            api_key_safe_raise_for_status(response=response)
+            return response.json()
+
+        if pipeline_id in await self.pipeline_ids:
+            return await asyncify(offer_inference_pipeline)(pipeline_id=pipeline_id, offer_request=offer_request, api_key=self.api_key)
 
     async def get_pipeline_metrics(self, pipeline_id: str) -> str:
         if pipeline_id not in await self.pipeline_ids:
