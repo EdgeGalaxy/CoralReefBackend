@@ -4,8 +4,8 @@ from typing import List
 from datetime import datetime
 from loguru import logger
 
-from reef.models import WorkflowModel, WorkspaceModel, UserModel
-from reef.exceptions import ObjectNotFoundError
+from reef.models import WorkflowModel, WorkspaceModel, UserModel, DeploymentModel
+from reef.exceptions import ObjectNotFoundError, AssociatedObjectExistsError
 
 class WorkflowCore:
     def __init__(
@@ -54,5 +54,9 @@ class WorkflowCore:
 
     async def delete_workflow(self) -> None:
         """Delete a workflow."""
+        deployments_count = await DeploymentModel.find(DeploymentModel.workflow.id == self.workflow.id).count()
+        if deployments_count > 0:
+            raise AssociatedObjectExistsError("工作流有关联的部署, 不能删除")
+
         await self.workflow.delete()
         logger.info(f'删除工作流: {self.workflow.id}')

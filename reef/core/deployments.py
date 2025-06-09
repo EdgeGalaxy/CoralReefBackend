@@ -174,6 +174,13 @@ class DeploymentCore:
         if not diff_result['workflow_changed'] and not diff_result['cameras_changed']:
             return True, "无需更新"
         
+        if diff_result['workflow_changed']:
+            self.deployment.parameters = {
+                item['name']: self.deployment.parameters.get(item['name'], item['default_value']) 
+                for item in self.deployment.workflow.specification.get('inputs', [])
+                if item['type'] == 'WorkflowParameter'
+            }
+        
         # 更新 md5
         self.deployment.workflow_md5 = self.deployment.workflow.specification_md5
         self.deployment.cameras_md5 = self._calc_cameras_md5(self.deployment.cameras)

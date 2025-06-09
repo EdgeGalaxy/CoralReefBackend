@@ -23,7 +23,6 @@ INPUT_NODE_TEMPLATE = {
                         "required": ["name"]
                     }
                 },
-            },
             "params": {
                 "type": "array",
                 "title": "Parameters",
@@ -80,7 +79,7 @@ INPUT_NODE_TEMPLATE = {
             },
                 "required": ['name', 'type', 'value']
             }
-        }
+        }},
     },
     "formData": {}
     },

@@ -50,8 +50,8 @@ async def check_deployment_status():
             for deployment in deployments:
                 try:
                     deployment_core = DeploymentCore(deployment)
-                    await deployment_core.get_status()
-                    logger.info(f'部署服务: {deployment.id} 状态检查正常')
+                    running_status = await deployment_core.get_status()
+                    logger.info(f'部署服务: {deployment.id} 状态为: {running_status.value}')
                 except Exception as e:
                     logger.warning(f'部署服务: {deployment.id} 状态检查失败: {str(e)}')
                     continue
