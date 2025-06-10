@@ -83,6 +83,9 @@ class DeploymentCore:
         await validate_gateway(gateway)
         await validate_cameras(cameras, gateway)
 
+        # 获取工作流输出图像字段
+        output_image_fields = await workflow.get_output_image_fields()
+
         deployment = DeploymentModel(
             name=name,
             description=description,
@@ -93,7 +96,8 @@ class DeploymentCore:
             workspace=workspace,
             running_status=OperationStatus.PENDING,
             workflow_md5=workflow.specification_md5,
-            cameras_md5=cls._calc_cameras_md5(cameras)
+            cameras_md5=cls._calc_cameras_md5(cameras),
+            output_image_fields=output_image_fields
         )
         await deployment.insert()
         logger.info(f"Created deployment: {deployment.id}")
@@ -175,11 +179,14 @@ class DeploymentCore:
             return True, "无需更新"
         
         if diff_result['workflow_changed']:
+            # 更新参数
             self.deployment.parameters = {
                 item['name']: self.deployment.parameters.get(item['name'], item['default_value']) 
                 for item in self.deployment.workflow.specification.get('inputs', [])
                 if item['type'] == 'WorkflowParameter'
             }
+            # 更新输出图像字段
+            self.deployment.output_image_fields = await self.deployment.workflow.get_output_image_fields()
         
         # 更新 md5
         self.deployment.workflow_md5 = self.deployment.workflow.specification_md5

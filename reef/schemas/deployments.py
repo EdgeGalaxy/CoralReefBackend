@@ -34,6 +34,7 @@ class DeploymentResponse(DeploymentBase):
     workflow_name: str
     pipeline_id: Optional[str]
     running_status: OperationStatus
+    output_image_fields: List[str]
     workspace_id: str
     created_at: datetime
     updated_at: datetime
@@ -56,6 +57,7 @@ class DeploymentResponse(DeploymentBase):
             workflow_name=db.workflow.name,
             pipeline_id=db.pipeline_id,
             running_status=db.running_status,
+            output_image_fields=db.output_image_fields,
             workspace_id=str(db.workspace.id),
             created_at=db.created_at,
             updated_at=db.updated_at

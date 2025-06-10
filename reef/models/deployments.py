@@ -41,6 +41,7 @@ class DeploymentModel(Document):
     pipeline_id: Optional[str] = Field(default=None, description="pipeline id")
     running_status: OperationStatus = Field(default=OperationStatus.PENDING, description="运行状态")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="部署参数")
+    output_image_fields: List[str] = Field(default_factory=list, description="工作流输出图像字段列表")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
     workspace: Link[WorkspaceModel] = Field(description="所属工作空间")
