@@ -59,6 +59,7 @@ class ProxyCore:
         
         gateway = await GatewayModel.find_one(
             GatewayModel.id == PydanticObjectId(pingpack_data.device_id),
+            GatewayModel.status != GatewayStatus.DELETED,
             fetch_links=True
         )
         if not gateway:
