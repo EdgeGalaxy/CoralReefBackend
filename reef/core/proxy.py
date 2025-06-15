@@ -59,7 +59,6 @@ class ProxyCore:
         
         gateway = await GatewayModel.find_one(
             GatewayModel.id == PydanticObjectId(pingpack_data.device_id),
-            GatewayModel.status != GatewayStatus.DELETED,
             fetch_links=True
         )
         if not gateway:
@@ -94,6 +93,7 @@ class ProxyCore:
             gateway = gateway_core.gateway
             logger.info(f"新建网关 {gateway.id} 成功")
 
+        gateway.status = GatewayStatus.ONLINE
         gateway_core = GatewayCore(gateway=gateway)
 
         gateway_data = {
