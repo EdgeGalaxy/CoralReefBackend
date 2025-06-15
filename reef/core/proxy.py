@@ -55,7 +55,7 @@ class ProxyCore:
             logger.error(f"inference_server_id 格式错误: {data}")
             raise ValueError("pingpack inference_server_id 格式错误, 需要包含 - 符号, 无法创建网关")
         
-        workspace_id, _ = pingpack_data.inference_server_id.split('-')
+        workspace_id, mac_address = pingpack_data.inference_server_id.split('-')
         
         gateway = await GatewayModel.find_one(
             GatewayModel.id == PydanticObjectId(pingpack_data.device_id),
@@ -71,7 +71,7 @@ class ProxyCore:
             if not workspace:
                 logger.error(f"工作空间 {workspace_id} 不存在, 无法创建网关")
                 raise ValueError(f"工作空间 {workspace_id} 不存在, 无法创建网关")
-            mac_address = pingpack_data.mac_address.replace(':', '')
+            # mac_address = pingpack_data.mac_address.replace(':', '')
             
             gateway_data = GatewayCreate(
                 id=pingpack_data.device_id,
@@ -86,18 +86,19 @@ class ProxyCore:
             # set status to online
             data['status'] = GatewayStatus.ONLINE
             data['last_heartbeat'] = datetime.now()
-            gateway = await GatewayCore.create_gateway(
+            gateway_core = await GatewayCore.create_gateway(
                 gateway_data=data,
                 workspace=workspace
             )
-            logger.info(f"新建网关 {gateway.gateway.id} 成功")
+            gateway = gateway_core.gateway
+            logger.info(f"新建网关 {gateway.id} 成功")
 
         gateway_core = GatewayCore(gateway=gateway)
 
         gateway_data = {
             "status": GatewayStatus.ONLINE,
             "ip_address": pingpack_data.ip_address,
-            "mac_address": pingpack_data.mac_address.replace(':', ''),
+            "mac_address": mac_address,
             "version": pingpack_data.inference_server_version,
             "last_heartbeat": datetime.now()
         }
