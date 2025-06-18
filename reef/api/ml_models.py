@@ -99,6 +99,17 @@ async def delete_model(
     return CommonResponse(message="模型删除成功")
 
 
+@router.put("/{model_id}/visibility/{is_public}", response_model=CommonResponse)
+async def set_model_visibility(
+    is_public: bool,
+    model: MLModelModel = Depends(get_ml_model),
+) -> CommonResponse:
+    """Set model visibility (public/private)."""
+    model_core = MLModelCore(model=model)
+    await model_core.set_model_visibility(is_public=is_public)
+    return CommonResponse(message="模型可见性设置成功")
+
+
 @router.post("/{model_id}/convert", response_model=CommonResponse)
 async def convert_onnx_to_rknn(
     model: MLModelModel = Depends(get_ml_model),

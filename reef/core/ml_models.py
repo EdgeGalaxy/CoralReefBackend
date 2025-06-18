@@ -32,10 +32,10 @@ class MLModelCore:
     async def get_workspace_models(cls, workspace: WorkspaceModel) -> List[MLModelModel]:
         """Get all ML models for this workspace."""
         return await MLModelModel.find(
-            Or(
-                MLModelModel.workspace.id == workspace.id,
-                MLModelModel.is_public == True
-            ),
+            # Or(
+            #     MLModelModel.workspace.id == workspace.id,
+            #     MLModelModel.is_public == True
+            # ),
             fetch_links=True
         ).sort("-created_at").to_list()
     
@@ -159,6 +159,13 @@ class MLModelCore:
         
         await self.model.delete()
         logger.info(f'Deleted ML model: {self.model.id}')
+    
+    async def set_model_visibility(self, is_public: bool) -> None:
+        """Set model visibility (public/private)."""
+        self.model.is_public = is_public
+        self.model.updated_at = datetime.now()
+        await self.model.save()
+        logger.info(f'Updated ML model visibility: {self.model.id}, is_public: {is_public}')
     
     async def convert_onnx_to_rknn(self) -> None:
         """Convert ONNX model to RKNN model."""
