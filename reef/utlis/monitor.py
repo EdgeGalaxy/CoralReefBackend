@@ -7,6 +7,8 @@ from reef.models.gateways import GatewayModel, GatewayStatus
 from reef.models import DeploymentModel
 from reef.core.deployments import DeploymentCore
 from reef.config import settings
+from reef.models.events import EventType
+from reef.core.events import EventLogger
 
 # 默认超时时间为60秒，如果配置文件中未设置
 GATEWAY_TIMEOUT = getattr(settings, 'GATEWAY_TIMEOUT', 60)
@@ -26,11 +28,16 @@ async def check_gateway_status():
 
             for gateway in online_gateways:
                 # 如果最后心跳时间超过阈值，将状态设置为离线
-                print(gateway.last_heartbeat, timeout_threshold)
                 if gateway.last_heartbeat < timeout_threshold:
                     gateway.status = GatewayStatus.OFFLINE
                     await gateway.save()
                     logger.warning(f'网关: {gateway.id} 检测上报时间超限，设置下线!')
+
+                    await EventLogger.log(
+                        event_type=EventType.GATEWAY_OFFLINE,
+                        workspace=gateway.workspace,
+                        gateway=gateway,
+                    )
                 else:
                     logger.info(f'网关: {gateway.id} 检测上报时间正常，继续运行!')
 

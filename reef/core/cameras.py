@@ -63,7 +63,7 @@ class CameraCore:
         # Check if camera has any deployments
         deployments = await DeploymentModel.find(
             DeploymentModel.workspace.id == self.camera.workspace.id,
-            ElemMatch(DeploymentModel.cameras, {"$eq": self.camera})
+            DeploymentModel.cameras.id == self.camera.id
         ).to_list()
         
         if deployments:
@@ -82,6 +82,6 @@ class CameraCore:
         """Get all deployments using this camera."""
         return await DeploymentModel.find(
             DeploymentModel.workspace.id == self.camera.workspace.id,
-            ElemMatch(DeploymentModel.cameras, {"$eq": self.camera}),
+            DeploymentModel.cameras.id == self.camera.id,
             fetch_links=True
         ).sort("-created_at").to_list()

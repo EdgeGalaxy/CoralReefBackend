@@ -12,6 +12,8 @@ from reef.core.gateways import GatewayCore
 from reef.models.workspaces import WorkspaceModel
 from reef.schemas.proxy import PingpackData
 from reef.schemas.gateways import GatewayCreate
+from reef.models.events import EventType
+from reef.core.events import EventLogger
 
 
 class ProxyCore:
@@ -93,6 +95,21 @@ class ProxyCore:
             gateway = gateway_core.gateway
             logger.info(f"新建网关 {gateway.id} 成功")
 
+            await EventLogger.log(
+                event_type=EventType.GATEWAY_REGISTER,
+                workspace=workspace,
+                gateway=gateway,
+                details={
+                    "设备ID": gateway.id,
+                    "MAC地址": gateway.mac_address,
+                    "版本": gateway.version,
+                    "平台": gateway.platform,
+                },
+            )
+        
+        old_status = gateway.status
+        last_heartbeat = gateway.last_heartbeat
+
         gateway.status = GatewayStatus.ONLINE
         gateway_core = GatewayCore(gateway=gateway)
 
@@ -105,6 +122,17 @@ class ProxyCore:
         }
         logger.info(f"更新网关 {gateway.id} 状态为 {GatewayStatus.ONLINE}")
         await gateway_core.update_gateway(gateway_data=gateway_data)
+
+        if old_status != GatewayStatus.ONLINE:
+            # Log gateway online event
+            await EventLogger.log(
+                event_type=EventType.GATEWAY_ONLINE,
+                workspace=gateway.workspace,
+                gateway=gateway,
+                details={
+                    "掉线时长": int((datetime.now() - last_heartbeat).total_seconds()),
+                },
+            )
 
     async def handle_inference_usage(self, data: Dict):
         logger.debug(f"解析请求 [usage-inference] ->: {data}")

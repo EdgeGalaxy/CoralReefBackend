@@ -17,6 +17,7 @@ from .ml_models import (
     AutoOrientConfig
 )
 from .blocks import BlockTranslation
+from .events import EventModel, EventType
 
 
 INIT_MODELS = [
@@ -30,7 +31,8 @@ INIT_MODELS = [
     WorkspaceModel,
     WorkspaceUserModel,
     BlockTranslation,
-    WorkflowTemplateModel
+    WorkflowTemplateModel,
+    EventModel
 ]
 
 __all__ = [
@@ -53,5 +55,7 @@ __all__ = [
     "AutoOrientConfig",
     "OperationStatus",
     "WorkflowTemplateModel",
+    "EventModel",
+    "EventType",
     "INIT_MODELS"
 ]

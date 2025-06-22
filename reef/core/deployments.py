@@ -14,6 +14,8 @@ from reef.models import (
     OperationStatus
 )
 from reef.exceptions import ObjectNotFoundError, InvalidStateError
+from reef.models.events import EventType
+from reef.core.events import EventLogger
 
 
 async def validate_gateway(gateway: GatewayModel) -> None:
@@ -102,6 +104,17 @@ class DeploymentCore:
         await deployment.insert()
         logger.info(f"Created deployment: {deployment.id}")
         
+        await EventLogger.log(
+            event_type=EventType.DEPLOYMENT_CREATE,
+            workspace=workspace,
+            deployment=deployment,
+            gateway=gateway,
+            details={
+                "name": name,
+                "workflow_id": str(workflow.id),
+                "camera_ids": [str(c.id) for c in cameras]
+            }
+        )
         return cls(deployment=deployment)
 
     async def update_deployment(self, update_data: Dict[str, Any] = None, cameras: Optional[List[CameraModel]] = None) -> None:
@@ -141,6 +154,13 @@ class DeploymentCore:
     async def delete_deployment(self) -> None:
         """Delete deployment"""
         await self.check_deployment()
+        await EventLogger.log(
+            event_type=EventType.DEPLOYMENT_DELETE,
+            workspace=self.deployment.workspace,
+            deployment=self.deployment,
+            gateway=self.deployment.gateway,
+            details={"name": self.deployment.name}
+        )
         await self.deployment.delete()
         # Reset deployment object
         self.deployment = None
@@ -159,12 +179,28 @@ class DeploymentCore:
     async def pause_pipeline(self) -> bool:
         """Pause pipeline"""
         await self.check_deployment()
-        return await self.deployment.pause_pipeline()
+        result = await self.deployment.pause_pipeline()
+        if result:
+            await EventLogger.log(
+                event_type=EventType.DEPLOYMENT_PAUSE,
+                workspace=self.deployment.workspace,
+                deployment=self.deployment,
+                gateway=self.deployment.gateway
+            )
+        return result
 
     async def resume_pipeline(self) -> bool:
         """Resume pipeline"""
         await self.check_deployment()
-        return await self.deployment.resume_pipeline()
+        result = await self.deployment.resume_pipeline()
+        if result:
+            await EventLogger.log(
+                event_type=EventType.DEPLOYMENT_RESUME,
+                workspace=self.deployment.workspace,
+                deployment=self.deployment,
+                gateway=self.deployment.gateway
+            )
+        return result
     
     async def offer_pipeline(self, offer_request: Dict[str, Any]) -> bool:
         """Offer pipeline"""
@@ -178,6 +214,11 @@ class DeploymentCore:
         if not diff_result['workflow_changed'] and not diff_result['cameras_changed']:
             return True, "无需更新"
         
+        restart_details = {
+            "workflow_changed": diff_result['workflow_changed'],
+            "cameras_changed": diff_result['cameras_changed']
+        }
+
         if diff_result['workflow_changed']:
             # 更新参数
             self.deployment.parameters = {
@@ -194,6 +235,14 @@ class DeploymentCore:
         
         # 手动触发更新
         await self.deployment.trigger_update()
+
+        await EventLogger.log(
+            event_type=EventType.DEPLOYMENT_RESTART,
+            workspace=self.deployment.workspace,
+            deployment=self.deployment,
+            gateway=self.deployment.gateway,
+            details=restart_details
+        )
         
         logger.info(f"Restarted pipeline for deployment: {self.deployment.id}")
         return True, "更新成功"

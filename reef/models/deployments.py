@@ -178,7 +178,7 @@ class DeploymentModel(Document):
             metrics = await pipeline_client.get_pipeline_metrics(self.pipeline_id)
             status = metrics['status']
             report = metrics['report']
-            
+
             self.running_status = await self.get_status(status, report)
             # async register metrics
             asyncio.create_task(PipelineMetricTimeSeries.register_metrics(self, report))
