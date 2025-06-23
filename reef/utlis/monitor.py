@@ -20,7 +20,8 @@ async def check_gateway_status():
         try:
             # 获取所有在线的网关
             online_gateways = await GatewayModel.find(
-                {"status": GatewayStatus.ONLINE}
+                GatewayModel.status == GatewayStatus.ONLINE, 
+                fetch_links=True
             ).to_list()
 
             current_time = datetime.now()

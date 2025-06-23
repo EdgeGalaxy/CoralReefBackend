@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from loguru import logger
 
 from reef.api._depends import get_workspace
-from reef.models import EventModel, WorkspaceModel, EventType
+from reef.models import EventModel, WorkspaceModel, EventType, DeploymentModel, GatewayModel
 from reef.schemas.events import EventRead
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/events", tags=["Events"])
@@ -47,8 +47,8 @@ async def list_events(
             "details": event.details,
             "created_at": event.created_at,
             "workspace_id": event.workspace.id,
-            "gateway_id": event.gateway.id if event.gateway else None,
-            "deployment_id": event.deployment.id if event.deployment else None,
+            "gateway_id": event.gateway.id if isinstance(event.gateway, GatewayModel) else None,
+            "deployment_id": event.deployment.id if isinstance(event.deployment, DeploymentModel) else None,
         }
         response.append(EventRead.model_validate(event_data))
 

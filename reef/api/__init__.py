@@ -23,6 +23,7 @@ from reef.api.ml_models import router as ml_models_router
 from reef.api.blocks import router as block_router
 from reef.api.workflow_template import router as workflow_template_router
 from reef.api.events import router as events_router
+from reef.api.statics import router as statics_router
 
 from reef.core.users import current_user
 from reef.core.users import fastapi_users, auth_backend
@@ -72,6 +73,7 @@ auth_router.include_router(ml_models_router)
 auth_router.include_router(block_router)
 auth_router.include_router(workflow_template_router)
 auth_router.include_router(events_router)
+auth_router.include_router(statics_router)
 # 用户相关
 noauth_router.include_router(users_router, prefix="/auth/users", tags=["users"])
 # 认证相关

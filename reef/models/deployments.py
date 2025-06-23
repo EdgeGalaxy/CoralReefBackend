@@ -30,6 +30,7 @@ class OperationStatus(str, Enum):
     NOT_FOUND = "not_found"
     TIMEOUT = "timeout"
 
+
 class DeploymentModel(Document):
     name: str = Field(description="部署名称")
     description: str = Field(description="部署描述")
