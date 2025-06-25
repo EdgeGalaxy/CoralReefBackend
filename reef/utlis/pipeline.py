@@ -26,7 +26,7 @@ class PipelineClient:
     async def pipeline_ids(self) -> List[str]:
         response = await asyncify(self.client.list_inference_pipelines)()
         logger.debug(f'Remote Pipeline ids: {response}')
-        return [p for p in response['pipelines']]
+        return [p for p in response['fixed_pipelines']]
 
     async def create_pipeline(
         self,
