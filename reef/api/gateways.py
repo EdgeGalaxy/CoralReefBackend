@@ -9,7 +9,8 @@ from reef.schemas.deployments import DeploymentResponse
 from reef.schemas.gateways import (
     GatewayCreate,
     GatewayResponse,
-    GatewayUpdate
+    GatewayUpdate,
+    GatewayCommandResponse
 )
 from reef.api._depends import check_user_has_workspace_permission, get_gateway, get_workspace
 
@@ -77,3 +78,15 @@ async def list_gateway_deployments(
     gateway_core = GatewayCore(gateway=gateway)
     deployments = await gateway_core.get_deployments()
     return [DeploymentResponse.db_to_schema(d) for d in deployments]
+
+
+@router.get("/install-command", response_model=GatewayCommandResponse)
+async def get_gateway_install_command(
+    workspace: WorkspaceModel = Depends(get_workspace),
+) -> GatewayCommandResponse:
+    # TODO: 后续可以从配置中读取
+    return GatewayCommandResponse(
+        name="新建网关",
+        description="在设备上执行以下命令",
+        code_snippet=f"curl -s https://loopeai.oss-cn-shanghai.aliyuncs.com/setup/init-bash/setup-client.sh | bash -s {workspace.id}"
+    )

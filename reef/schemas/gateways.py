@@ -63,3 +63,10 @@ class GatewayResponse(GatewayBase):
             created_at=db.created_at,
             updated_at=db.updated_at,
         )
+
+
+class GatewayCommandResponse(BaseModel):
+    """网关安装命令响应"""
+    name: str
+    description: str
+    code_snippet: str

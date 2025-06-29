@@ -1,6 +1,10 @@
 import json
+import os
+import hashlib
+import tempfile
 from typing import List, Optional
 from datetime import datetime
+from pathlib import Path
 
 from loguru import logger
 
@@ -18,7 +22,8 @@ from reef.models import (
 from reef.schemas.ml_models import MLModelCreate 
 from reef.exceptions import ValidationError
 from reef.utlis.roboflow import get_roboflow_model_data, get_roboflow_model_ids, get_models_type
-from reef.utlis.cloud import upload_data_to_cloud, transfer_object
+from reef.utlis.cloud import upload_data_to_cloud, transfer_object, download_from_cloud
+from reef.utlis.convert.onnx2rknn import ConvertOnnxToRknn
 
 
 class MLModelCore:
@@ -169,4 +174,61 @@ class MLModelCore:
     
     async def convert_onnx_to_rknn(self) -> None:
         """Convert ONNX model to RKNN model."""
-        pass
+        try:
+            # 下载ONNX模型
+            logger.info(f"开始下载ONNX模型: {self.model.onnx_model_url}")
+            onnx_content = await download_from_cloud(self.model.onnx_model_url)
+            
+            # 计算SHA256哈希值
+            sha256_hash = hashlib.sha256(onnx_content).hexdigest()
+            short_hash = sha256_hash[:12]
+            
+            # 创建临时工作目录
+            work_dir = Path(tempfile.gettempdir()) / "convert" / short_hash
+            work_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 保存ONNX模型
+            onnx_path = work_dir / "model.onnx"
+            onnx_path.write_bytes(onnx_content)
+            logger.info(f"ONNX模型已保存到: {onnx_path}")
+            
+            # 设置输出目录
+            output_dir = work_dir / "output"
+            output_dir.mkdir(exist_ok=True)
+            
+            # 转换模型
+            logger.info("开始转换ONNX到RKNN模型...")
+            converter = ConvertOnnxToRknn(
+                onnx_model=str(onnx_path),
+                output_dir=str(output_dir)
+            )
+            converter.convert()
+            
+            # 检查转换结果
+            rknn_path = output_dir / f"{onnx_path.stem}.rknn"
+            if not rknn_path.exists():
+                raise FileNotFoundError(f"RKNN模型文件未生成: {rknn_path}")
+            
+            # 上传RKNN模型到OSS
+            rknn_key = f"{self.model.name}/weights.rknn"
+            logger.info(f"开始上传RKNN模型到OSS: {rknn_key}")
+            
+            with open(rknn_path, 'rb') as f:
+                await upload_data_to_cloud(f.read(), rknn_key)
+            
+            # 更新模型记录
+            self.model.rknn_model_url = rknn_key
+            self.model.updated_at = datetime.now()
+            await self.model.save()
+            
+            logger.info(f"RKNN模型转换完成并已上传: {rknn_key}")
+            
+        except Exception as e:
+            logger.exception(f"RKNN模型转换失败: {str(e)}")
+            raise
+        finally:
+            # 清理临时文件
+            if 'work_dir' in locals():
+                import shutil
+                shutil.rmtree(work_dir, ignore_errors=True)
+                logger.debug(f"清理临时工作目录: {work_dir}")
