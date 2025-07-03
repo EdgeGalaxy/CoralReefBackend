@@ -212,6 +212,23 @@ class DeploymentModel(Document):
             logger.error(f"Failed to get pipeline results: {e}")
             raise RemoteCallError(f"远程获取推理管道结果失败")
 
+    async def get_pipeline_metrics_timerange(
+        self,
+        start_time: float = None,
+        end_time: float = None,
+        minutes: int = 5
+    ) -> Dict[str, Any]:
+        """获取指定时间范围内的Pipeline指标数据"""
+        try:
+            pipeline_client = PipelineClient(self.gateway.get_api_url())
+            metrics = await pipeline_client.get_pipeline_metrics_timerange(
+                self.pipeline_id, start_time, end_time, minutes
+            )
+            return metrics
+        except Exception as e:
+            logger.error(f"Failed to get pipeline metrics timerange: {e}")
+            raise RemoteCallError(f"远程获取推理管道指标数据失败")
+
     async def pause_pipeline(self) -> bool:
         """Pause pipeline"""
         pipeline_client = PipelineClient(self.gateway.get_api_url())

@@ -94,6 +94,11 @@ app.include_router(noauth_router)
 app.include_router(auth_router, prefix="/api/reef")
 
 
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     logger.exception(f'http exception: {exc}')

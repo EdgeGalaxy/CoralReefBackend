@@ -9,6 +9,21 @@ from reef.utlis.cloud import sign_url
 router = APIRouter(tags=["roboflow"])
 
 
+@router.get("/getWeights")
+async def get_weights(
+    model_id: str,
+    api_key: Optional[str] = Query(None, description="Roboflow API密钥"),
+    nocache: Optional[str] = Query(True, description="是否缓存"),
+    device: Optional[str] = Query(None, description="设备ID"),
+    dynamic: Optional[str] = Query(True, description="是否动态")
+) -> RoboflowMLModel:
+    """
+    获取Roboflow模型权重
+    """
+    model_core = await MLModelCore.get_model_by_id(model_id)
+    return {"taskType": model_core.model.task_type}
+
+
 @router.get("/ort/{model_id}", response_model=RoboflowMLModel)
 async def get_roboflow_model(
     model_id: str,

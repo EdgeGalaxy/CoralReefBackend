@@ -176,6 +176,16 @@ class DeploymentCore:
         await self.check_deployment()
         return await self.deployment.get_pipeline_results()
 
+    async def get_metrics_timerange(
+        self,
+        start_time: float = None,
+        end_time: float = None,
+        minutes: int = 5
+    ) -> Dict[str, Any]:
+        """获取指定时间范围内的Pipeline指标数据"""
+        await self.check_deployment()
+        return await self.deployment.get_pipeline_metrics_timerange(start_time, end_time, minutes)
+
     async def pause_pipeline(self) -> bool:
         """Pause pipeline"""
         await self.check_deployment()

@@ -79,6 +79,40 @@ class PipelineClient:
         response = await asyncify(self.client.get_inference_pipeline_status)(pipeline_id=pipeline_id)
         return response
     
+    async def get_pipeline_metrics_timerange(
+        self,
+        pipeline_id: str,
+        start_time: float = None,
+        end_time: float = None,
+        minutes: int = 5
+    ) -> Dict[str, Any]:
+        """获取指定时间范围内的Pipeline指标数据"""
+        def get_metrics_request(pipeline_id: str, start_time: float, end_time: float, minutes: int, api_key: str) -> Dict[str, Any]:
+            params = {"minutes": minutes}
+            if start_time is not None:
+                params["start_time"] = start_time
+            if end_time is not None:
+                params["end_time"] = end_time
+                
+            response = requests.get(
+                f"{self.api_url}/inference_pipelines/{pipeline_id}/metrics",
+                params=params,
+                headers={"Authorization": f"Bearer {api_key}"}
+            )
+            api_key_safe_raise_for_status(response=response)
+            return response.json()
+
+        if pipeline_id not in await self.pipeline_ids:
+            return {"dates": [], "datasets": []}
+        
+        return await asyncify(get_metrics_request)(
+            pipeline_id=pipeline_id,
+            start_time=start_time,
+            end_time=end_time,
+            minutes=minutes,
+            api_key=self.api_key
+        )
+    
     async def get_pipeline_results(
         self,
         pipeline_id: str,

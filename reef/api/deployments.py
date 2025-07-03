@@ -98,6 +98,18 @@ async def get_deployment_results(
     return await deployment_core.get_results()
 
 
+@router.get("/{deployment_id}/metrics")
+async def get_deployment_metrics(
+    deployment: DeploymentModel = Depends(get_deployment),
+    start_time: float = Query(None, description="开始时间戳（秒）"),
+    end_time: float = Query(None, description="结束时间戳（秒）"),
+    minutes: int = Query(5, description="最近几分钟的数据，当start_time和end_time为空时使用")
+):
+    """获取指定时间范围内的Pipeline指标数据"""
+    deployment_core = DeploymentCore(deployment=deployment)
+    return await deployment_core.get_metrics_timerange(start_time, end_time, minutes)
+
+
 @router.post("/{deployment_id}/pause")
 async def pause_deployment(
     deployment: DeploymentModel = Depends(get_deployment),
