@@ -80,9 +80,9 @@ async def list_gateway_deployments(
     return [DeploymentResponse.db_to_schema(d) for d in deployments]
 
 
-@router.get("/install-command", response_model=GatewayCommandResponse)
+@router.get("/install/command", response_model=GatewayCommandResponse)
 async def get_gateway_install_command(
-    workspace: WorkspaceModel = Depends(get_workspace),
+    workspace: WorkspaceModel = Depends(get_workspace)
 ) -> GatewayCommandResponse:
     # TODO: 后续可以从配置中读取
     return GatewayCommandResponse(

@@ -84,7 +84,8 @@ class DeploymentModel(Document):
             self.pipeline_id = await pipeline_client.create_pipeline(
                 video_reference=await self._fetch_video_reference(),
                 workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
-                workspace_name=self.workspace.name
+                workspace_name=self.workspace.name,
+                output_image_fields=self.output_image_fields
             )
             self.running_status = OperationStatus.PENDING
             # fetch running status after 5 seconds
@@ -115,7 +116,8 @@ class DeploymentModel(Document):
                 self.pipeline_id = await pipeline_client.create_pipeline(
                     video_reference=await self._fetch_video_reference(),
                     workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
-                    workspace_name=self.workspace.name
+                    workspace_name=self.workspace.name,
+                    output_image_fields=self.output_image_fields
                 )
                 logger.info(f"Restarted pipeline for deployment: old={old_document.pipeline_id}, new={self.pipeline_id}")
 

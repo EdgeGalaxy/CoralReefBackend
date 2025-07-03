@@ -32,12 +32,16 @@ class PipelineClient:
         self,
         video_reference: Union[str, int, List[Union[str, int]]],
         workflow_spec: Dict[str, Any],
-        workspace_name: str
+        workspace_name: str,
+        output_image_fields: List[str]
     ) -> str:
         response = await asyncify(self.client.start_inference_pipeline_with_workflow)(
             video_reference=video_reference,
             workflow_specification=workflow_spec,
-            workspace_name=workspace_name
+            workspace_name=workspace_name,
+            workflows_parameters={
+                "output_image_fields": output_image_fields
+            }
         )
         return response['context']['pipeline_id']
     
