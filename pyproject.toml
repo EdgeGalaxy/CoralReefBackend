@@ -17,6 +17,7 @@ passlib = "^1.7.4"
 fastapi-users = {extras = ["beanie", "oauth"], version = "^14.0.0"}
 oss2 = "^2.19.1"
 uvicorn = "^0.32.1"
+
 rknn-toolkit2 = "^2.3.2"
 
 
