@@ -192,13 +192,8 @@ class DeploymentModel(Document):
             await self.save()
 
             return self.running_status
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, HTTPCallErrorError):
             self.running_status = OperationStatus.TIMEOUT
-            await self.save()
-            return self.running_status
-        except HTTPCallErrorError as e:
-            error_status = e.status_code
-            self.running_status = OperationStatus.NOT_FOUND if error_status == 404 else OperationStatus.FAILURE
             await self.save()
             return self.running_status
         except Exception as e:
