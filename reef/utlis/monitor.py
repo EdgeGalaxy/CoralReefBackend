@@ -59,7 +59,7 @@ async def check_deployment_status():
                 try:
                     deployment_core = DeploymentCore(deployment)
                     running_status = await deployment_core.get_status()
-                    if running_status == OperationStatus.RUNNING:
+                    if running_status == OperationStatus.RUNNING.value:
                         gateway = await GatewayModel.find_one(GatewayModel.id == deployment.gateway.id)
                         if gateway:
                             gateway.status = GatewayStatus.ONLINE

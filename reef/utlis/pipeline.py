@@ -79,7 +79,7 @@ class PipelineClient:
 
     async def get_pipeline_metrics(self, pipeline_id: str) -> str:
         if pipeline_id not in await self.pipeline_ids:
-            return {"status": "not_found", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
+            return {"status": "timeout", "context": {"request_id": "", "pipeline_id": pipeline_id}, "report": None}
         
         response = await asyncify(self.client.get_inference_pipeline_status)(pipeline_id=pipeline_id)
         return response
