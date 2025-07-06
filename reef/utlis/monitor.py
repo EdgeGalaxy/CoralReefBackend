@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 
 from reef.models.gateways import GatewayModel, GatewayStatus
-from reef.models import DeploymentModel
+from reef.models.deployments import DeploymentModel, OperationStatus
 from reef.core.deployments import DeploymentCore
 from reef.config import settings
 from reef.models.events import EventType
@@ -59,6 +59,11 @@ async def check_deployment_status():
                 try:
                     deployment_core = DeploymentCore(deployment)
                     running_status = await deployment_core.get_status()
+                    if running_status == OperationStatus.RUNNING:
+                        gateway = await GatewayModel.find_one(GatewayModel.id == deployment.gateway.id)
+                        if gateway:
+                            gateway.status = GatewayStatus.ONLINE
+                            await gateway.save()
                     logger.info(f'部署服务: {deployment.id} 状态为: {running_status.value}')
                 except Exception as e:
                     logger.warning(f'部署服务: {deployment.id} 状态检查失败: {str(e)}')

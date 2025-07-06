@@ -61,8 +61,7 @@ class PipelineClient:
         raise False
     
     async def terminate_pipeline(self, pipeline_id: str) -> None:
-        if pipeline_id in await self.pipeline_ids:
-            await asyncify(self.client.terminate_inference_pipeline)(pipeline_id=pipeline_id)
+        await asyncify(self.client.terminate_inference_pipeline)(pipeline_id=pipeline_id)
     
     async def offer_pipeline(self, pipeline_id: str, offer_request: Dict[str, Any]) -> None:
         def offer_inference_pipeline(pipeline_id: str, offer_request: Dict[str, Any], api_key: str) -> None:
