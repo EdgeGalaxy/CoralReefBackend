@@ -77,6 +77,10 @@ class CameraCore:
     async def fetch_snapshot(self) -> None:
         """Fetch a snapshot from camera."""
         return await self.camera.fetch_snapshot()
+    
+    async def get_video_info(self) -> dict:
+        """Get video information from camera."""
+        return await self.camera.get_video_info()
 
     async def get_deployments(self) -> List[DeploymentModel]:
         """Get all deployments using this camera."""

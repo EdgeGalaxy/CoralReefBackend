@@ -5,8 +5,9 @@ from typing import Optional, Union
 import cv2
 from pydantic import Field
 from beanie import Document, Link
-from .workspaces import WorkspaceModel
-from .gateways import GatewayModel
+from reef.models.workspaces import WorkspaceModel
+from reef.models.gateways import GatewayModel
+from reef.utlis.cloud import sign_url
 
 class CameraType(str, Enum):
     USB = "usb"
@@ -62,3 +63,51 @@ class CameraModel(Document):
         mock_image = cv2.add(mock_image, noise)
         
         return mock_image
+    
+    async def get_video_info(self) -> dict:
+        """Get video information from camera."""
+        # 只有特定类型的摄像头才获取视频信息
+        if self.type not in [CameraType.FILE, CameraType.URL, CameraType.RTSP]:
+            return {
+                "width": None,
+                "height": None,
+                "fps": None,
+                "total_frames": None
+            }
+        
+        try:
+            # 创建VideoCapture对象
+            path = await sign_url(self.path) if self.type == CameraType.FILE else str(self.path)
+            cap = cv2.VideoCapture(path)
+            
+            if not cap.isOpened():
+                return {
+                    "width": None,
+                    "height": None,
+                    "fps": None,
+                    "total_frames": None
+                }
+            
+            # 获取视频信息
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            
+            # 释放VideoCapture对象
+            cap.release()
+            
+            return {
+                "width": width if width > 0 else None,
+                "height": height if height > 0 else None,
+                "fps": fps if fps > 0 else None,
+                "total_frames": total_frames if total_frames > 0 else None
+            }
+        except Exception as e:
+            # 如果获取失败，返回None值
+            return {
+                "width": None,
+                "height": None,
+                "fps": None,
+                "total_frames": None
+            }

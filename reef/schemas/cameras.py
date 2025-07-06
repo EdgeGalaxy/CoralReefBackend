@@ -21,6 +21,16 @@ class CameraUpdate(BaseModel):
     description: Optional[str] = None
 
 
+class CameraVideoInfo(BaseModel):
+    width: Optional[int] = Field(default=None, description="视频宽度")
+    height: Optional[int] = Field(default=None, description="视频高度")
+    fps: Optional[float] = Field(default=None, description="帧率")
+    total_frames: Optional[int] = Field(default=None, description="总帧数")
+    
+    class Config:
+        from_attributes = True
+
+
 class CameraResponse(CameraBase):
     id: str
     gateway_id: Optional[str] = None

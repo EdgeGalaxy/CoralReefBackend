@@ -8,7 +8,8 @@ from reef.schemas import CommonResponse
 from reef.schemas.cameras import (
     CameraCreate,
     CameraResponse,
-    CameraUpdate
+    CameraUpdate,
+    CameraVideoInfo
 )
 from reef.schemas.deployments import DeploymentResponse
 from reef.api._depends import check_user_has_workspace_permission, get_camera, get_gateway, get_workspace
@@ -81,3 +82,13 @@ async def get_camera_snapshot(
     if not success:
         raise HTTPException(status_code=500, detail="Failed to encode camera snapshot")
     return Response(content=encoded_image.tobytes(), media_type="image/jpeg")
+
+
+@router.get("/{camera_id}/video-info", response_model=CameraVideoInfo)
+async def get_camera_video_info(
+    camera: CameraModel = Depends(get_camera),
+) -> CameraVideoInfo:
+    """获取摄像头视频信息"""
+    camera_core = CameraCore(camera=camera)
+    video_info = await camera_core.get_video_info()
+    return CameraVideoInfo(**video_info)
