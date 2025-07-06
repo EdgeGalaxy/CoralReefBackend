@@ -79,7 +79,8 @@ class DeploymentCore:
         cameras: List[CameraModel],
         workflow: WorkflowModel,
         parameters: Dict[str, Any],
-        workspace: WorkspaceModel
+        workspace: WorkspaceModel,
+        max_fps: Optional[int] = None
     ) -> 'DeploymentCore':
         """Create a new deployment"""
         await validate_gateway(gateway)
@@ -99,7 +100,8 @@ class DeploymentCore:
             running_status=OperationStatus.PENDING,
             workflow_md5=workflow.specification_md5,
             cameras_md5=cls._calc_cameras_md5(cameras),
-            output_image_fields=output_image_fields
+            output_image_fields=output_image_fields,
+            max_fps=max_fps
         )
         await deployment.insert()
         logger.info(f"Created deployment: {deployment.id}")

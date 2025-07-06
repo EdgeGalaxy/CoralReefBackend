@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 import requests
 from asyncer import asyncify
@@ -33,15 +32,18 @@ class PipelineClient:
         video_reference: Union[str, int, List[Union[str, int]]],
         workflow_spec: Dict[str, Any],
         workspace_name: str,
-        output_image_fields: List[str]
+        output_image_fields: List[str],
+        max_fps: Optional[int] = None
     ) -> str:
         response = await asyncify(self.client.start_inference_pipeline_with_workflow)(
             video_reference=video_reference,
             workflow_specification=workflow_spec,
             workspace_name=workspace_name,
             workflows_parameters={
-                "output_image_fields": output_image_fields
+                "output_image_fields": output_image_fields,
+                "pipeline_name": workspace_name
             },
+            max_fps=max_fps,
         )
         return response['context']['pipeline_id']
     

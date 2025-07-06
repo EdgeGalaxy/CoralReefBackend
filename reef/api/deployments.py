@@ -55,7 +55,8 @@ async def create_deployment(
         cameras=await get_cameras(deployment_data.camera_ids),
         workflow=await get_workflow(deployment_data.workflow_id),
         parameters=deployment_data.parameters,
-        workspace=workspace
+        workspace=workspace,
+        max_fps=deployment_data.max_fps
     )
     return DeploymentResponse.db_to_schema(deployment_core.deployment)
 

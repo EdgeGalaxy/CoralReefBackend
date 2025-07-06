@@ -15,6 +15,7 @@ class DeploymentCreate(DeploymentBase):
     camera_ids: List[str]
     gateway_id: str
     workflow_id: str
+    max_fps: Optional[int] = None
 
 
 class DeploymentUpdate(BaseModel):
@@ -22,6 +23,7 @@ class DeploymentUpdate(BaseModel):
     description: Optional[str] = ''
     camera_ids: Optional[List[str]] = []
     parameters: Optional[Dict[str, Any]] = {}
+    max_fps: Optional[int] = None
 
 
 class DeploymentResponse(DeploymentBase):
@@ -36,6 +38,7 @@ class DeploymentResponse(DeploymentBase):
     running_status: OperationStatus
     output_image_fields: List[str]
     workspace_id: str
+    max_fps: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -59,6 +62,7 @@ class DeploymentResponse(DeploymentBase):
             running_status=db.running_status,
             output_image_fields=db.output_image_fields,
             workspace_id=str(db.workspace.id),
+            max_fps=db.max_fps,
             created_at=db.created_at,
             updated_at=db.updated_at
         )

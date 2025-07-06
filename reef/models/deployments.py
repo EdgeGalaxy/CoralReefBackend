@@ -42,6 +42,7 @@ class DeploymentModel(Document):
     pipeline_id: Optional[str] = Field(default=None, description="pipeline id")
     running_status: OperationStatus = Field(default=OperationStatus.PENDING, description="运行状态")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="部署参数")
+    max_fps: Optional[int] = Field(default=None, description="最大帧率")
     output_image_fields: List[str] = Field(default_factory=list, description="工作流输出图像字段列表")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
@@ -85,7 +86,8 @@ class DeploymentModel(Document):
                 video_reference=await self._fetch_video_reference(),
                 workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                 workspace_name=self.workspace.name,
-                output_image_fields=self.output_image_fields
+                output_image_fields=self.output_image_fields,
+                max_fps=self.max_fps
             )
             self.running_status = OperationStatus.PENDING
             # fetch running status after 5 seconds
@@ -106,7 +108,8 @@ class DeploymentModel(Document):
                 self.gateway.id != old_document.gateway.id or
                 self.parameters != old_document.parameters or
                 self.workflow_md5 != old_document.workflow_md5 or
-                self.cameras_md5 != old_document.cameras_md5
+                self.cameras_md5 != old_document.cameras_md5 or
+                self.max_fps != old_document.max_fps
             )
             
             if needs_restart:
@@ -117,7 +120,8 @@ class DeploymentModel(Document):
                     video_reference=await self._fetch_video_reference(),
                     workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                     workspace_name=self.workspace.name,
-                    output_image_fields=self.output_image_fields
+                    output_image_fields=self.output_image_fields,
+                    max_fps=self.max_fps
                 )
                 logger.info(f"Restarted pipeline for deployment: old={old_document.pipeline_id}, new={self.pipeline_id}")
 

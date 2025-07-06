@@ -29,6 +29,8 @@ async def list_events(
 
     if deployment_id:
         query_conditions.append(EventModel.deployment.id == deployment_id)
+    else:
+        query_conditions.append(EventModel.deployment.id == None)
 
     events = (
         await EventModel.find(*query_conditions, fetch_links=True)

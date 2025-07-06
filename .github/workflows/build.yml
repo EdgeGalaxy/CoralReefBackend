@@ -39,10 +39,8 @@ jobs:
       run: |
         if [[ $GITHUB_REF == refs/tags/* ]]; then
           echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          echo "CACHE_TAG_NAME=latest" >> $GITHUB_OUTPUT
         else
           echo "TAG_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-          echo "CACHE_TAG_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
         fi
 
     - name: Build and push
