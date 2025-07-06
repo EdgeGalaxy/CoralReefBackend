@@ -5,13 +5,13 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  release:
-    types: [published]
-
+    branches:
+      - 'main'
+      - 'dev'
+    tags:
+      - 'v*'
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -54,6 +54,3 @@ jobs:
         tags: ${{ env.IMAGE_NAME }}:${{ steps.extract_tag.outputs.TAG_NAME }}
         cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
         cache-to: type=inline
-        build-args: |
-          BUILDKIT_INLINE_CACHE=1
-          POETRY_CACHE_DIR=/tmp/poetry-cache
