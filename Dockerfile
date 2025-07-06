@@ -28,9 +28,6 @@ RUN poetry config virtualenvs.create false && \
 # 复制项目文件
 COPY . .
 
-# 构建并安装项目
-RUN poetry build && \
-    pip install --no-cache-dir dist/*.whl
 
 # 第二阶段：运行时环境
 FROM python:3.10-slim AS runtime
