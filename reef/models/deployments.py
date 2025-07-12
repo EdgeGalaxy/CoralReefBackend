@@ -66,8 +66,15 @@ class DeploymentModel(Document):
         """Convert video file to signed url"""
         return await sign_url(video_file, expires=3600 * 24 * 30)
     
+    async def _is_all_file_source(self) -> None:
+        """Check if all cameras are file source"""
+        types = [camera.type == CameraType.FILE for camera in self.cameras]
+        if any(types) and not all(types):
+            raise RemoteCallError("不支持文件视频和非文件视频混合部署")
+    
     async def _fetch_video_reference(self) -> List[str]:
         """Fetch video reference"""
+        await self._is_all_file_source()
         video_reference = []
         for camera in self.cameras:
             if camera.type == CameraType.FILE:
@@ -76,18 +83,30 @@ class DeploymentModel(Document):
                 path = camera.path
             video_reference.append(path)
         return video_reference
-
+    
+    async def _fetch_video_source_properties(self) -> Dict[str, Any]:
+        """Fetch video source properties"""
+        is_file_source, fps = False, None
+        for camera in self.cameras:
+            if camera.type == CameraType.FILE:
+                properties = await camera.get_video_info()
+                is_file_source = True
+                fps = properties.get("fps")
+        return is_file_source, fps
+        
     @before_event([Insert])
     async def create_remote_pipeline(self):
         """Create inference pipeline before deployment is created"""
         try:
             pipeline_client = PipelineClient(self.gateway.get_api_url())
+            is_file_source, max_fps = await self._fetch_video_source_properties()
             self.pipeline_id = await pipeline_client.create_pipeline(
                 video_reference=await self._fetch_video_reference(),
                 workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                 workspace_name=self.workspace.name,
                 output_image_fields=self.output_image_fields,
-                max_fps=self.max_fps
+                max_fps=self.max_fps or max_fps,
+                is_file_source=is_file_source
             )
             self.running_status = OperationStatus.PENDING
             # fetch running status after 5 seconds
@@ -115,13 +134,15 @@ class DeploymentModel(Document):
             if needs_restart:
                 if old_document.pipeline_id:
                     await pipeline_client.terminate_pipeline(old_document.pipeline_id)
-                
+
+                is_file_source, max_fps = await self._fetch_video_source_properties() 
                 self.pipeline_id = await pipeline_client.create_pipeline(
                     video_reference=await self._fetch_video_reference(),
                     workflow_spec=self.__replace_spec_inputs(self.workflow.specification),
                     workspace_name=self.workspace.name,
                     output_image_fields=self.output_image_fields,
-                    max_fps=self.max_fps
+                    max_fps=self.max_fps or max_fps,
+                    is_file_source=is_file_source
                 )
                 logger.info(f"Restarted pipeline for deployment: old={old_document.pipeline_id}, new={self.pipeline_id}")
 
@@ -174,6 +195,9 @@ class DeploymentModel(Document):
                 running_status = OperationStatus.MUTED
             else:
                 running_status = OperationStatus.WARNING
+        else:
+            logger.error(f"Unknown status: {status}")
+            running_status = OperationStatus.FAILURE
         return running_status
 
     async def fetch_recent_running_status(self) -> OperationStatus:

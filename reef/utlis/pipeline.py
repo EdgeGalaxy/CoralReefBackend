@@ -33,7 +33,8 @@ class PipelineClient:
         workflow_spec: Dict[str, Any],
         workspace_name: str,
         output_image_fields: List[str],
-        max_fps: Optional[int] = None
+        max_fps: Optional[int] = None,
+        is_file_source: Optional[bool] = False
     ) -> str:
         response = await asyncify(self.client.start_inference_pipeline_with_workflow)(
             video_reference=video_reference,
@@ -41,7 +42,8 @@ class PipelineClient:
             workspace_name=workspace_name,
             workflows_parameters={
                 "output_image_fields": output_image_fields,
-                "pipeline_name": workspace_name
+                "pipeline_name": workspace_name,
+                "is_file_source": is_file_source
             },
             max_fps=max_fps,
         )
