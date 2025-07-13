@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,40 @@ class CameraVideoInfo(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class WebRTCOffer(BaseModel):
+    type: str = Field(description="WebRTC offer类型")
+    sdp: str = Field(description="WebRTC SDP信息")
+
+class WebRTCTURNConfig(BaseModel):
+    urls: List[str] = Field(description="TURN服务器地址")
+    username: str = Field(description="TURN服务器用户名")
+    credential: str = Field(description="TURN服务器密码")
+
+
+class CameraWebRTCStreamRequest(BaseModel):
+    webrtc_offer: WebRTCOffer = Field(description="WebRTC offer信息")
+    webrtc_turn_config: Optional[WebRTCTURNConfig] = None
+    fps: Optional[float] = Field(default=30, description="视频帧率")
+    processing_timeout: Optional[float] = Field(default=0.1, description="处理超时时间")
+    max_consecutive_timeouts: Optional[int] = Field(default=30, description="最大连续超时次数")
+    min_consecutive_on_time: Optional[int] = Field(default=5, description="最小连续正常时间")
+
+
+class CameraSnapshotResponse(BaseModel):
+    status: str = Field(description="状态")
+    image_base64: Optional[str] = Field(default=None, description="base64编码的图片")
+    width: Optional[int] = Field(default=None, description="图片宽度")
+    height: Optional[int] = Field(default=None, description="图片高度")
+    error: Optional[str] = Field(default=None, description="错误信息")
+
+
+class CameraWebRTCStreamResponse(BaseModel):
+    status: str = Field(description="状态")
+    sdp: Optional[str] = Field(default=None, description="WebRTC SDP answer")
+    type: Optional[str] = Field(default=None, description="WebRTC answer类型")
+    error: Optional[str] = Field(default=None, description="错误信息")
 
 
 class CameraResponse(CameraBase):

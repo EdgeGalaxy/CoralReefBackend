@@ -1,15 +1,19 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi.responses import StreamingResponse
 import cv2
 
 from reef.core.cameras import CameraCore
-from reef.models import WorkspaceModel, CameraModel, GatewayModel, DeploymentModel
+from reef.models import WorkspaceModel, CameraModel
 from reef.schemas import CommonResponse
 from reef.schemas.cameras import (
     CameraCreate,
     CameraResponse,
     CameraUpdate,
-    CameraVideoInfo
+    CameraVideoInfo,
+    CameraWebRTCStreamRequest,
+    CameraSnapshotResponse,
+    CameraWebRTCStreamResponse
 )
 from reef.schemas.deployments import DeploymentResponse
 from reef.api._depends import check_user_has_workspace_permission, get_camera, get_gateway, get_workspace
@@ -77,11 +81,12 @@ async def get_camera_snapshot(
 ):
     camera_core = CameraCore(camera=camera)
     snapshot = await camera_core.fetch_snapshot()
-    # Convert snapshot to bytes for response
-    success, encoded_image = cv2.imencode('.jpg', snapshot)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to encode camera snapshot")
-    return Response(content=encoded_image.tobytes(), media_type="image/jpeg")
+    data = {
+        "status": "success",
+        "image_base64": snapshot
+    }
+    return CameraSnapshotResponse(**data)
+
 
 
 @router.get("/{camera_id}/video-info", response_model=CameraVideoInfo)
@@ -92,3 +97,19 @@ async def get_camera_video_info(
     camera_core = CameraCore(camera=camera)
     video_info = await camera_core.get_video_info()
     return CameraVideoInfo(**video_info)
+
+
+@router.post("/{camera_id}/webrtc-stream", response_model=CameraWebRTCStreamResponse)
+async def create_camera_webrtc_stream_via_pipeline(
+    webrtc_request: CameraWebRTCStreamRequest,
+    camera: CameraModel = Depends(get_camera),
+) -> CameraWebRTCStreamResponse:
+    """通过 pipeline 接口创建摄像头 WebRTC 视频流"""
+    camera_core = CameraCore(camera=camera)
+    try:
+        result = await camera_core.fetch_webrtc_video_stream(
+            webrtc_config=webrtc_request.model_dump()
+        )
+        return CameraWebRTCStreamResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建视频流失败: {str(e)}")

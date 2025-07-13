@@ -15,6 +15,14 @@ def get_bucket():
     return bucket
 
 
+def sign_url_sync(key: str, expires: int = 3600) -> str:
+    if not key:
+        return None
+    bucket = get_bucket()
+    signed_url = bucket.sign_url('GET', key, expires=expires)
+    return signed_url
+
+
 async def sign_url(key: str, expires: int = 3600) -> str:
     if not key:
         return None

@@ -1,5 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, AsyncGenerator
 from datetime import datetime
+import asyncio
+import threading
+
+import cv2
+import base64
+import numpy as np
 
 from loguru import logger
 from beanie.odm.operators.find.array import ElemMatch
@@ -10,10 +16,10 @@ from reef.models import (
     GatewayModel,
     DeploymentModel
 )
-
 from reef.exceptions import (
     AssociatedObjectExistsError
 )
+from reef.schemas.cameras import CameraWebRTCStreamRequest
 
 
 class CameraCore:
@@ -74,7 +80,7 @@ class CameraCore:
         await self.camera.delete()
         logger.info(f'删除相机: {self.camera.id}')
     
-    async def fetch_snapshot(self) -> None:
+    async def fetch_snapshot(self) -> str:
         """Fetch a snapshot from camera."""
         return await self.camera.fetch_snapshot()
     
@@ -89,3 +95,12 @@ class CameraCore:
             DeploymentModel.cameras.id == self.camera.id,
             fetch_links=True
         ).sort("-created_at").to_list()
+    
+    async def fetch_webrtc_video_stream(
+        self, 
+        webrtc_config: dict
+    ) -> Dict[str, Any]:
+        """通过 pipeline 客户端创建 WebRTC 视频流"""
+        result = await self.camera.fetch_webrtc_video_stream(webrtc_config=webrtc_config)
+        return result
+

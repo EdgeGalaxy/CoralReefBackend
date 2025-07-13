@@ -3,11 +3,14 @@ from enum import Enum
 from typing import Optional, Union
 
 import cv2
+import base64
+import numpy as np
 from pydantic import Field
 from beanie import Document, Link
 from reef.models.workspaces import WorkspaceModel
 from reef.models.gateways import GatewayModel
 from reef.utlis.cloud import sign_url
+from reef.exceptions import RemoteCallError
 
 class CameraType(str, Enum):
     USB = "usb"
@@ -35,35 +38,89 @@ class CameraModel(Document):
     class Settings:
         name = "cameras"
     
-    async def fetch_snapshot(self) -> None:
+    async def fetch_snapshot(self) -> str:
         """Fetch a snapshot from camera."""
-        # Create a mock image with numpy and cv2
-        import numpy as np
-        
-        # Set image dimensions
-        width = 640
-        height = 480
-        
-        # Create base black image
-        mock_image = np.zeros((height, width, 3), dtype=np.uint8)
-        
-        # Add some random colored shapes
-        # Draw a red rectangle
-        cv2.rectangle(mock_image, (100, 100), (200, 200), (0, 0, 255), -1)
-        
-        # Draw a green circle
-        cv2.circle(mock_image, (320, 240), 50, (0, 255, 0), -1)
-        
-        # Draw blue text
-        cv2.putText(mock_image, "Mock Camera", (50, 50), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        
-        # Add some random noise
-        noise = np.random.randint(0, 50, mock_image.shape, dtype=np.uint8)
-        mock_image = cv2.add(mock_image, noise)
-        
-        return mock_image
+        from reef.utlis.pipeline import PipelineClient
+        # 如果 gateway 不为空且 type 为 USB，则使用 pipeline 方式
+        if self.gateway and self.type == CameraType.USB:
+            try:
+                gateway_url = self.gateway.get_api_url()
+                pipeline_client = PipelineClient(api_url=gateway_url)
+                # 调用 pipeline 客户端的视频帧捕获接口
+                result = await pipeline_client.capture_video_frame(video_source=self.path)
+                if result.get('status') == 'success':
+                    return result['image_base64']
+                else:
+                    raise RemoteCallError(f"获取视频帧失败: {result.get('error')}")
+                    
+            except Exception as e:
+                raise RemoteCallError(f"获取视频帧失败: {e}")
+        else:
+            # 尝试使用 cv2.VideoCapture 读取视频帧
+            try:
+                # 根据类型处理路径
+                if self.type == CameraType.FILE:
+                    path = await sign_url(self.path)
+                else:
+                    path = str(self.path)
+                
+                cap = cv2.VideoCapture(path)
+                
+                if not cap.isOpened():
+                    raise RemoteCallError("无法打开视频源")
+
+                count = 0 
+                while count < 5: 
+                    ret, frame = cap.read()
+                    if not ret or frame is None:
+                        count += 1
+                    else:
+                        break
+
+                cap.release()
+                
+                if frame is not None:
+                    # 将帧编码为JPEG格式
+                    success, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    if success:
+                        # 转换为base64
+                        image_base64 = base64.b64encode(buffer).decode('utf-8')
+                        return image_base64
+                    else:
+                        raise RemoteCallError("无法编码图片为JPEG格式")
+                else:
+                    raise RemoteCallError("无法读取帧")
+            except Exception as e:
+                raise RemoteCallError(f"获取视频帧失败: {e}")
     
+    async def fetch_webrtc_video_stream(self, webrtc_config: dict) -> dict:
+        """Fetch a webrtc video stream from camera."""
+        from reef.utlis.pipeline import PipelineClient
+        from reef.utlis.webrtc import create_webrtc_connection
+
+        # 对于有网关的 USB 摄像头，使用 pipeline 客户端
+        if self.gateway and self.type == CameraType.USB:
+            try:
+                gateway_url = self.gateway.get_api_url()
+                pipeline_client = PipelineClient(api_url=gateway_url)
+                result = await pipeline_client.create_webrtc_video_stream(
+                    video_source=self.path,
+                    webrtc_config=webrtc_config,
+                )   
+                return result
+            except Exception as e:
+                raise RemoteCallError(f"获取视频流失败: {e}")
+        else:
+            # 对于其他类型的摄像头，使用新的 WebRTC 实现
+            try:
+                # 创建 WebRTC 连接
+                result, manager = create_webrtc_connection(webrtc_config, self)
+                
+                return result
+                    
+            except Exception as e:
+                raise RemoteCallError(f"获取视频流失败: {e}")
+
     async def get_video_info(self) -> dict:
         """Get video information from camera."""
         # 只有特定类型的摄像头才获取视频信息

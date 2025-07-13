@@ -131,6 +131,48 @@ class PipelineClient:
         )
         return response
 
+    async def capture_video_frame(self, video_source: Union[str, int]) -> Dict[str, Any]:
+        """封装视频帧捕获接口"""
+        def capture_video_frame_request(video_source: Union[str, int]) -> Dict[str, Any]:
+            response = requests.post(
+                f"{self.api_url}/inference_pipelines/video/capture",
+                json={"video_source": video_source},
+                headers={"Authorization": f"Bearer {self.api_key}"}
+            )
+            api_key_safe_raise_for_status(response=response)
+            return response.json()
+
+        return await asyncify(capture_video_frame_request)(video_source=video_source)
+
+    async def create_webrtc_video_stream(
+        self,
+        video_source: Union[str, int],
+        webrtc_config: dict
+    ) -> Dict[str, Any]:
+        """封装WebRTC视频流创建接口"""
+        def create_webrtc_stream_request(
+            video_source: Union[str, int],
+            webrtc_config: dict
+        ) -> Dict[str, Any]:
+            request_data = {
+                "video_source": video_source,
+                "api_key": self.api_key,
+                **webrtc_config
+            }
+            
+            response = requests.post(
+                f"{self.api_url}/inference_pipelines/video/webrtc-stream",
+                json=request_data,
+                headers={"Authorization": f"Bearer {self.api_key}"}
+            )
+            api_key_safe_raise_for_status(response=response)
+            return response.json()
+
+        return await asyncify(create_webrtc_stream_request)(
+            video_source=video_source,
+            webrtc_config=webrtc_config
+        )
+
 
 if __name__ == "__main__":
     import anyio
