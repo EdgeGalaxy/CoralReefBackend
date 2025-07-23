@@ -70,6 +70,9 @@ class WorkflowTemplate:
         input_node["data"]["formData"]["params"] = [{"name": step['name'], "value": step['default_value']} for step in specification.inputs if step['type'] == 'WorkflowParameter']
         nodes.append(input_node)
         
+        # 创建步骤名称到索引的映射
+        step_name_to_index = {step['name']: i for i, step in enumerate(specification.steps)}
+        
         # 添加处理步骤节点
         for i, step in enumerate(specification.steps):
             step_node = copy.deepcopy(STEP_NODE_TEMPLATE)
@@ -78,22 +81,52 @@ class WorkflowTemplate:
             step_node["data"] = await get_block_by_identifier(step['type'])
             step_node["data"]["formData"] = step
             nodes.append(step_node)
+        
+        # 基于依赖关系构建边 - 每个节点只连接最近的上游节点
+        for i, step in enumerate(specification.steps):
+            step_id = f"{step['type']}-{i}"
+            dependencies = cls._extract_step_dependencies(step)
             
-            # 添加边
-            if i == 0:
-                # 第一个步骤连接到输入节点
+            # 找到最近的上游节点
+            closest_upstream = None
+            max_upstream_index = -1
+            
+            # 检查对其他步骤的依赖，找到索引最大的（最近的）
+            for dep_step_name in dependencies:
+                if dep_step_name in step_name_to_index:
+                    dep_index = step_name_to_index[dep_step_name]
+                    if dep_index > max_upstream_index:
+                        max_upstream_index = dep_index
+                        closest_upstream = f"{specification.steps[dep_index]['type']}-{dep_index}"
+            
+            # 如果有最近的上游步骤，连接到它
+            if closest_upstream:
+                edges.append({
+                    "source": closest_upstream,
+                    "target": step_id,
+                    "id": f"reactflow__edge-{closest_upstream}-{step_id}"
+                })
+            # 否则检查是否需要连接到输入节点
+            elif cls._has_input_dependency(step):
                 edges.append({
                     "source": "input-node",
-                    "target": step_node["id"],
-                    "id": f"reactflow__edge-input-node-{step_node['id']}"
+                    "target": step_id,
+                    "id": f"reactflow__edge-input-node-{step_id}"
                 })
-            else:
-                # 连接到前一个步骤
+            # 如果没有任何依赖，连接到前一个步骤（保持线性）
+            elif i > 0:
                 prev_step_id = f"{specification.steps[i-1]['type']}-{i-1}"
                 edges.append({
                     "source": prev_step_id,
-                    "target": step_node["id"],
-                    "id": f"reactflow__edge-{prev_step_id}-{step_node['id']}"
+                    "target": step_id,
+                    "id": f"reactflow__edge-{prev_step_id}-{step_id}"
+                })
+            # 第一个步骤且没有依赖，连接到输入
+            else:
+                edges.append({
+                    "source": "input-node",
+                    "target": step_id,
+                    "id": f"reactflow__edge-input-node-{step_id}"
                 })
         
         # 添加输出节点
@@ -105,19 +138,81 @@ class WorkflowTemplate:
         } for output in specification.outputs]
         nodes.append(output_node)
         
-        # 添加最后一个步骤到输出节点的边
-        if specification.steps:
-            last_step_id = f"{specification.steps[-1]['type']}-{len(specification.steps)-1}"
-            edges.append({
-                "source": last_step_id,
-                "target": "output-node",
-                "id": f"reactflow__edge-{last_step_id}-output-node"
-            })
+        # 连接输出依赖的步骤到输出节点 - 只连接没有下游节点的步骤
+        output_dependencies = set()
+        for output in specification.outputs:
+            if output["selector"].startswith("$steps."):
+                step_name = output["selector"].split(".")[1]
+                if step_name in step_name_to_index:
+                    output_dependencies.add(step_name)
+        
+        # 找出所有作为上游节点的步骤（有下游节点的步骤）
+        steps_with_downstream = set()
+        for i, step in enumerate(specification.steps):
+            dependencies = cls._extract_step_dependencies(step)
+            steps_with_downstream.update(dependencies)
+        
+        # 只连接输出依赖中没有下游节点的步骤
+        for dep_step_name in output_dependencies:
+            if dep_step_name not in steps_with_downstream:
+                dep_index = step_name_to_index[dep_step_name]
+                source_id = f"{specification.steps[dep_index]['type']}-{dep_index}"
+                edges.append({
+                    "source": source_id,
+                    "target": "output-node",
+                    "id": f"reactflow__edge-{source_id}-output-node"
+                })
         
         return {
             "nodes": nodes,
             "edges": edges
         }
+    
+    @classmethod
+    def _extract_step_dependencies(cls, step: dict) -> set:
+        """提取步骤中对其他步骤的依赖"""
+        import re
+        dependencies = set()
+        
+        def extract_from_value(value):
+            if isinstance(value, str) and "$steps." in value:
+                # 更精确的正则表达式，匹配 $steps.step_name.property 格式
+                matches = re.findall(r'\$steps\.([^.\s\[\]]+)(?:\.[^.\s\[\]]+)*', value)
+                dependencies.update(matches)
+            elif isinstance(value, dict):
+                for v in value.values():
+                    extract_from_value(v)
+            elif isinstance(value, list):
+                for item in value:
+                    extract_from_value(item)
+        
+        # 递归提取所有字段中的依赖
+        for key, value in step.items():
+            if key != 'name' and key != 'type':  # 排除名称和类型字段
+                extract_from_value(value)
+        
+        return dependencies
+    
+    @classmethod
+    def _has_input_dependency(cls, step: dict) -> bool:
+        """检查步骤是否依赖输入"""
+        
+        def check_value(value):
+            if isinstance(value, str) and "$inputs." in value:
+                return True
+            elif isinstance(value, dict):
+                return any(check_value(v) for v in value.values())
+            elif isinstance(value, list):
+                return any(check_value(item) for item in value)
+            return False
+        
+        # 检查所有字段是否包含输入依赖
+        for key, value in step.items():
+            if key != 'name' and key != 'type':  # 排除名称和类型字段
+                if check_value(value):
+                    return True
+        
+        return False
     
     @classmethod
     async def publish_template(

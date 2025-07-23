@@ -197,10 +197,11 @@ class MLModelCore:
             output_dir.mkdir(exist_ok=True)
             
             # 转换模型
-            logger.info("开始转换ONNX到RKNN模型...")
+            logger.info(f"开始转换ONNX到RKNN模型: {onnx_path}, {output_dir}")
             converter = ConvertOnnxToRknn(
                 onnx_model=str(onnx_path),
-                output_dir=str(output_dir)
+                output_dir=str(output_dir),
+                hybrid_quant=False
             )
             converter.convert()
             
